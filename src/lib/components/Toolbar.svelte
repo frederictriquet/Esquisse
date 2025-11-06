@@ -5,6 +5,7 @@
 	import { browser } from '$app/environment';
 
 	export let onClear: () => void;
+	export let onHelp: (() => void) | undefined = undefined;
 
 	let colorValue = $settings.color;
 	let widthValue = $settings.width;
@@ -105,6 +106,15 @@
 	// Sync local values with store changes (in case store is updated elsewhere)
 	$: colorValue = $settings.color;
 	$: widthValue = $settings.width;
+
+	// Export methods for keyboard shortcuts
+	export function triggerSave() {
+		handleSave();
+	}
+
+	export function triggerLoad() {
+		handleLoad();
+	}
 </script>
 
 <div class="toolbar">
@@ -166,6 +176,12 @@
 		<button class="save-button" on:click={handleSave}> Save Drawing </button>
 		<button class="load-button" on:click={handleLoad}> Load Drawing </button>
 	</div>
+
+	{#if onHelp}
+		<div class="toolbar-section">
+			<button class="help-button" on:click={onHelp}> Help (H) </button>
+		</div>
+	{/if}
 
 	{#if saveSuccess}
 		<div class="message success">File saved successfully!</div>
@@ -428,5 +444,26 @@
 		background: #f8d7da;
 		color: #721c24;
 		border: 1px solid #f5c6cb;
+	}
+
+	.help-button {
+		width: 100%;
+		padding: 10px 16px;
+		background: #6c757d;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.2s ease;
+	}
+
+	.help-button:hover {
+		background: #5a6268;
+	}
+
+	.help-button:active {
+		transform: translateY(1px);
 	}
 </style>

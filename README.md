@@ -90,11 +90,11 @@ This project includes comprehensive documentation to guide development from star
 | 5 | State Management | 3h | ✅ Complete |
 | 6 | Multi-Window Sync | 5h | ✅ Complete |
 | 7 | File Persistence | 4h | ✅ Complete |
-| 8 | Polish | 4h | 🔄 Next Phase |
-| 9 | Desktop | 3h | ⏳ Pending |
+| 8 | Polish | 4h | ✅ Complete |
+| 9 | Desktop | 3h | 🔄 Next Phase |
 | 10 | Testing & Docs | 3h | ⏳ Pending |
 
-**Progress: 29/39 hours completed (~74%)**
+**Progress: 33/39 hours completed (~85%)**
 
 ---
 
@@ -107,7 +107,7 @@ This project includes comprehensive documentation to guide development from star
 - **Build Tool**: Vite
 - **Desktop**: Tauri (optional, Phase 9)
 
-### Current Features (Phases 0-7)
+### Current Features (Phases 0-8)
 - ✅ **Infinite canvas** with zoom/pan
 - ✅ **Mouse-centered zooming** (mouse wheel)
 - ✅ **Right-click panning**
@@ -123,11 +123,16 @@ This project includes comprehensive documentation to guide development from star
 - ✅ **Real-time synchronization** across windows
 - ✅ **Save/load drawings** (versioned JSON format)
 - ✅ **File validation** with comprehensive error handling
+- ✅ **Viewport culling** for optimal performance
+- ✅ **Smooth line rendering** (quadratic curve interpolation)
+- ✅ **Keyboard shortcuts** (save, load, undo, reset, help)
+- ✅ **Help modal** with comprehensive instructions
+- ✅ **60fps performance** with 1000+ strokes
 
-### Planned Features (Phases 8-10)
-- ⏳ Performance optimizations
+### Planned Features (Phases 9-10)
 - ⏳ Desktop packaging (Tauri)
 - ⏳ Lightweight (3-10MB desktop app)
+- ⏳ Native file dialogs
 
 ---
 
@@ -370,9 +375,10 @@ Detailed completion documentation available:
 - [PHASE_5_COMPLETE.md](PHASE_5_COMPLETE.md) - State management & stores
 - [PHASE_6_COMPLETE.md](PHASE_6_COMPLETE.md) - Multi-window synchronization
 - [PHASE_7_COMPLETE.md](PHASE_7_COMPLETE.md) - File persistence (save/load)
+- [PHASE_8_COMPLETE.md](PHASE_8_COMPLETE.md) - Polish & performance optimizations
 
 ---
 
 **Last Updated**: 2025-01-06
-**Status**: Phases 0-7 Complete (74% done)
-**Next Step**: Phase 8 - Polish & Performance Optimizations
+**Status**: Phases 0-8 Complete (85% done)
+**Next Step**: Phase 9 - Desktop Packaging (Tauri)

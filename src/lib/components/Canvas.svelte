@@ -5,6 +5,7 @@
 	import { drawing } from '$lib/stores/drawing';
 	import { screenToWorld } from '$lib/utils/coordinates';
 	import type { Point, Stroke } from '$lib/types';
+	import { generateTestStrokes, PerformanceTest } from '$lib/utils/performanceTest';
 
 	// Canvas reference
 	let canvas: HTMLCanvasElement;
@@ -15,6 +16,10 @@
 	let isPanning = false;
 	let lastPanPoint: Point | null = null;
 
+	// Performance testing
+	let performanceTest = new PerformanceTest();
+	let lastCulledCount = 0;
+
 	// Subscribe to drawing store
 	$: strokes = $drawing.strokes;
 	$: currentStroke = $drawing.currentStroke;
@@ -22,6 +27,58 @@
 	// Export clear function for toolbar
 	export function clear() {
 		drawing.clear();
+	}
+
+	// Export performance test functions
+	export function startPerformanceTest(strokeCount: number = 1000) {
+		// Generate test strokes
+		const testStrokes = generateTestStrokes(strokeCount);
+
+		// Set strokes in the store
+		drawing.setStrokes(testStrokes);
+
+		// Start the performance test
+		performanceTest.start();
+
+		console.log(`🧪 Performance test started with ${strokeCount} strokes`);
+		console.log('📊 Pan and zoom around the canvas for 10-15 seconds, then press T again to see results');
+	}
+
+	export function stopPerformanceTest() {
+		if (!performanceTest.running) {
+			console.log('⚠️ No performance test is currently running');
+			return;
+		}
+
+		// Stop test and get results
+		const results = performanceTest.stop(strokes.length, lastCulledCount);
+
+		// Display results
+		console.log('');
+		console.log('═══════════════════════════════════════');
+		console.log('📊 PERFORMANCE TEST RESULTS');
+		console.log('═══════════════════════════════════════');
+		console.log(`Total Strokes: ${results.strokeCount}`);
+		console.log(`Test Duration: ${results.duration}s`);
+		console.log(`Average FPS: ${results.avgFPS}`);
+		console.log(`Min FPS: ${results.minFPS}`);
+		console.log(`Max FPS: ${results.maxFPS}`);
+		console.log(`Avg Culled Strokes: ${Math.round(results.culledStrokesAvg)}`);
+		console.log(`Avg Rendered: ${results.strokeCount - Math.round(results.culledStrokesAvg)}`);
+		console.log('═══════════════════════════════════════');
+		console.log('');
+
+		// Show alert with results
+		alert(`Performance Test Results:
+
+Strokes: ${results.strokeCount}
+Duration: ${results.duration}s
+Average FPS: ${results.avgFPS}
+Min FPS: ${results.minFPS}
+Max FPS: ${results.maxFPS}
+Avg Culled: ${Math.round(results.culledStrokesAvg)} (${Math.round((results.culledStrokesAvg / results.strokeCount) * 100)}%)
+
+${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ? 'Excellent' : results.avgFPS >= 30 ? 'Good' : 'Needs Improvement'}`);
 	}
 
 	// Subscribe to transform changes to trigger re-render
@@ -196,7 +253,39 @@
 	}
 
 	/**
+	 * Check if a stroke is visible in the current viewport
+	 * Optimizes rendering by skipping offscreen strokes
+	 */
+	function isStrokeVisible(stroke: Stroke): boolean {
+		if (!canvas || stroke.points.length === 0) return false;
+
+		// Calculate viewport bounds in world coordinates
+		const viewportLeft = -$transform.x / $transform.scale;
+		const viewportTop = -$transform.y / $transform.scale;
+		const viewportRight = viewportLeft + canvas.width / $transform.scale;
+		const viewportBottom = viewportTop + canvas.height / $transform.scale;
+
+		// Add margin for stroke width
+		const margin = stroke.width * 2;
+
+		// Check if any point is within viewport (with margin)
+		for (const point of stroke.points) {
+			if (
+				point.x >= viewportLeft - margin &&
+				point.x <= viewportRight + margin &&
+				point.y >= viewportTop - margin &&
+				point.y <= viewportBottom + margin
+			) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Render all strokes and current stroke to canvas with transform applied
+	 * Includes viewport culling for performance optimization
 	 */
 	function renderCanvas() {
 		if (!ctx || !canvas) return;
@@ -217,13 +306,18 @@
 			$transform.y
 		);
 
-		// Draw all completed strokes (points and width are in world coordinates)
+		// Draw only visible completed strokes (viewport culling optimization)
 		// Strokes zoom naturally with the canvas transform
+		let culledCount = 0;
 		for (const stroke of strokes) {
-			drawStroke(stroke);
+			if (isStrokeVisible(stroke)) {
+				drawStroke(stroke);
+			} else {
+				culledCount++;
+			}
 		}
 
-		// Draw current stroke being drawn
+		// Draw current stroke being drawn (always visible)
 		// Width was calculated at current zoom level, so appears 2px on screen
 		if (currentStroke && currentStroke.points.length > 0) {
 			drawStroke(currentStroke);
@@ -231,10 +325,23 @@
 
 		// Restore context state
 		ctx.restore();
+
+		// Track culled count for performance testing
+		lastCulledCount = culledCount;
+
+		// Record frame for performance testing
+		if (performanceTest.running) {
+			performanceTest.recordFrame();
+		}
+
+		// Log culling stats in development (can be removed for production)
+		if (culledCount > 0 && strokes.length > 100 && !performanceTest.running) {
+			console.log(`Viewport culling: rendered ${strokes.length - culledCount}/${strokes.length} strokes`);
+		}
 	}
 
 	/**
-	 * Draw a single stroke on the canvas
+	 * Draw a single stroke on the canvas with smooth line interpolation
 	 * Stroke width is in world coordinates and zooms naturally with the canvas transform
 	 */
 	function drawStroke(stroke: Stroke) {
@@ -251,10 +358,36 @@
 		const firstPoint = stroke.points[0];
 		ctx.moveTo(firstPoint.x, firstPoint.y);
 
-		// Draw line through all points
-		for (let i = 1; i < stroke.points.length; i++) {
-			const point = stroke.points[i];
-			ctx.lineTo(point.x, point.y);
+		// For single point, just draw a dot
+		if (stroke.points.length === 1) {
+			ctx.lineTo(firstPoint.x + 0.01, firstPoint.y);
+		}
+		// For two points, draw a straight line
+		else if (stroke.points.length === 2) {
+			const secondPoint = stroke.points[1];
+			ctx.lineTo(secondPoint.x, secondPoint.y);
+		}
+		// For multiple points, use quadratic curves for smoothing
+		else {
+			// Draw smooth line using quadratic curves
+			// Connect each point to the next with a curve, using the midpoint as control
+			for (let i = 1; i < stroke.points.length - 1; i++) {
+				const point = stroke.points[i];
+				const nextPoint = stroke.points[i + 1];
+
+				// Calculate midpoint between current and next point
+				const midX = (point.x + nextPoint.x) / 2;
+				const midY = (point.y + nextPoint.y) / 2;
+
+				// Draw quadratic curve from previous point to midpoint
+				// Using current point as the control point
+				ctx.quadraticCurveTo(point.x, point.y, midX, midY);
+			}
+
+			// Draw final segment to last point
+			const lastPoint = stroke.points[stroke.points.length - 1];
+			const secondLastPoint = stroke.points[stroke.points.length - 2];
+			ctx.quadraticCurveTo(secondLastPoint.x, secondLastPoint.y, lastPoint.x, lastPoint.y);
 		}
 
 		ctx.stroke();
