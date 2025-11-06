@@ -1,10 +1,18 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 import type { Stroke } from '$lib/types';
+import {
+	createEsquisseFile,
+	downloadEsquisseFile,
+	readEsquisseFile,
+	selectFile,
+	type EsquisseFile
+} from '$lib/utils/fileIO';
 
 export interface DrawingState {
 	strokes: Stroke[];
 	currentStroke: Stroke | null;
+	currentFile: EsquisseFile | null; // Track current file for save/load
 }
 
 const CHANNEL_NAME = 'esquisse-drawing';
@@ -12,7 +20,8 @@ const CHANNEL_NAME = 'esquisse-drawing';
 function createDrawingStore() {
 	const initialState: DrawingState = {
 		strokes: [],
-		currentStroke: null
+		currentStroke: null,
+		currentFile: null
 	};
 
 	const { subscribe, set, update } = writable<DrawingState>(initialState);
@@ -87,6 +96,7 @@ function createDrawingStore() {
 				if (!state.currentStroke) return state;
 
 				return {
+					...state,
 					strokes: [...state.strokes, state.currentStroke],
 					currentStroke: null
 				};
@@ -128,6 +138,68 @@ function createDrawingStore() {
 				...state,
 				strokes
 			}));
+		},
+
+		/**
+		 * Save drawing to file
+		 */
+		save: async (filename?: string): Promise<void> => {
+			return new Promise((resolve, reject) => {
+				try {
+					let currentState: DrawingState | undefined;
+					const unsubscribe = subscribe((state) => {
+						currentState = state;
+					});
+					unsubscribe();
+
+					if (!currentState) {
+						reject(new Error('Failed to get drawing state'));
+						return;
+					}
+
+					const file = createEsquisseFile(
+						currentState.strokes,
+						currentState.currentFile || undefined
+					);
+					downloadEsquisseFile(file, filename);
+
+					// Update current file reference
+					update((state) => ({
+						...state,
+						currentFile: file
+					}));
+
+					resolve();
+				} catch (error) {
+					reject(error);
+				}
+			});
+		},
+
+		/**
+		 * Load drawing from file
+		 */
+		load: async (): Promise<void> => {
+			try {
+				// Select file
+				const file = await selectFile();
+				if (!file) {
+					return; // User cancelled
+				}
+
+				// Read and parse file
+				const esquisseFile = await readEsquisseFile(file);
+
+				// Update store with loaded data
+				broadcastUpdate((state) => ({
+					...state,
+					strokes: esquisseFile.strokes,
+					currentStroke: null,
+					currentFile: esquisseFile
+				}));
+			} catch (error) {
+				throw error;
+			}
 		}
 	};
 }

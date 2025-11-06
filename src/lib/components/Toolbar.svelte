@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { settings } from '$lib/stores/settings';
 	import { transform } from '$lib/stores/transform';
+	import { drawing } from '$lib/stores/drawing';
 	import { browser } from '$app/environment';
 
 	export let onClear: () => void;
@@ -8,6 +9,49 @@
 	let colorValue = $settings.color;
 	let widthValue = $settings.width;
 	let presentationWindow: Window | null = null;
+	let saveError = '';
+	let loadError = '';
+	let saveSuccess = false;
+	let loadSuccess = false;
+
+	function clearMessages() {
+		saveError = '';
+		loadError = '';
+		saveSuccess = false;
+		loadSuccess = false;
+	}
+
+	async function handleSave() {
+		clearMessages();
+		try {
+			await drawing.save();
+			saveSuccess = true;
+			setTimeout(() => {
+				saveSuccess = false;
+			}, 3000);
+		} catch (error) {
+			saveError = error instanceof Error ? error.message : 'Failed to save file';
+			setTimeout(() => {
+				saveError = '';
+			}, 5000);
+		}
+	}
+
+	async function handleLoad() {
+		clearMessages();
+		try {
+			await drawing.load();
+			loadSuccess = true;
+			setTimeout(() => {
+				loadSuccess = false;
+			}, 3000);
+		} catch (error) {
+			loadError = error instanceof Error ? error.message : 'Failed to load file';
+			setTimeout(() => {
+				loadError = '';
+			}, 5000);
+		}
+	}
 
 	function handleResetView() {
 		transform.reset();
@@ -117,6 +161,27 @@
 	<div class="toolbar-section">
 		<button class="present-button" on:click={openPresentation}> Open Presentation </button>
 	</div>
+
+	<div class="toolbar-section">
+		<button class="save-button" on:click={handleSave}> Save Drawing </button>
+		<button class="load-button" on:click={handleLoad}> Load Drawing </button>
+	</div>
+
+	{#if saveSuccess}
+		<div class="message success">File saved successfully!</div>
+	{/if}
+
+	{#if loadSuccess}
+		<div class="message success">File loaded successfully!</div>
+	{/if}
+
+	{#if saveError}
+		<div class="message error">{saveError}</div>
+	{/if}
+
+	{#if loadError}
+		<div class="message error">{loadError}</div>
+	{/if}
 </div>
 
 <style>
@@ -299,5 +364,69 @@
 
 	.present-button:active {
 		transform: translateY(1px);
+	}
+
+	.save-button {
+		width: 100%;
+		padding: 10px 16px;
+		background: #2196f3;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.2s ease;
+		margin-bottom: 8px;
+	}
+
+	.save-button:hover {
+		background: #0b7dda;
+	}
+
+	.save-button:active {
+		transform: translateY(1px);
+	}
+
+	.load-button {
+		width: 100%;
+		padding: 10px 16px;
+		background: #ff9800;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.2s ease;
+	}
+
+	.load-button:hover {
+		background: #e68900;
+	}
+
+	.load-button:active {
+		transform: translateY(1px);
+	}
+
+	.message {
+		padding: 8px 12px;
+		border-radius: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		text-align: center;
+		margin-top: 8px;
+	}
+
+	.message.success {
+		background: #d4edda;
+		color: #155724;
+		border: 1px solid #c3e6cb;
+	}
+
+	.message.error {
+		background: #f8d7da;
+		color: #721c24;
+		border: 1px solid #f5c6cb;
 	}
 </style>
