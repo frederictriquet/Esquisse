@@ -1,19 +1,55 @@
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 import type { Transform } from '$lib/types';
 
 // Zoom limits for safety and usability
 const MIN_SCALE = 0.01;
 const MAX_SCALE = 100;
 
+const CHANNEL_NAME = 'esquisse-transform';
+const INITIAL_TRANSFORM: Transform = {
+	x: 0,
+	y: 0,
+	scale: 1
+};
+
 /**
  * Creates a transform store for managing canvas zoom and pan state.
  */
 function createTransformStore() {
-	const { subscribe, set, update } = writable<Transform>({
-		x: 0,
-		y: 0,
-		scale: 1
-	});
+	const { subscribe, set, update } = writable<Transform>(INITIAL_TRANSFORM);
+
+	// BroadcastChannel for multi-window sync
+	let channel: BroadcastChannel | null = null;
+	let isReceiving = false;
+
+	if (browser) {
+		channel = new BroadcastChannel(CHANNEL_NAME);
+
+		channel.onmessage = (event) => {
+			isReceiving = true;
+			set(event.data);
+			isReceiving = false;
+		};
+	}
+
+	// Helper to broadcast updates
+	const broadcastUpdate = (fn: (state: Transform) => Transform) => {
+		update((state) => {
+			const newState = fn(state);
+			if (channel && !isReceiving) {
+				channel.postMessage(newState);
+			}
+			return newState;
+		});
+	};
+
+	const broadcastSet = (value: Transform) => {
+		set(value);
+		if (channel && !isReceiving) {
+			channel.postMessage(value);
+		}
+	};
 
 	return {
 		subscribe,
@@ -25,7 +61,7 @@ function createTransformStore() {
 		 * @param mouseY - Mouse Y position in screen coordinates
 		 */
 		zoom: (delta: number, mouseX: number, mouseY: number) => {
-			update((transform) => {
+			broadcastUpdate((transform) => {
 				// Calculate zoom factor (smaller deltas for smoother zooming)
 				const zoomFactor = 1 + delta * 0.001;
 				const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, transform.scale * zoomFactor));
@@ -57,7 +93,7 @@ function createTransformStore() {
 		 * @param deltaY - Y movement in screen pixels
 		 */
 		pan: (deltaX: number, deltaY: number) => {
-			update((transform) => ({
+			broadcastUpdate((transform) => ({
 				x: transform.x + deltaX,
 				y: transform.y + deltaY,
 				scale: transform.scale
@@ -68,7 +104,7 @@ function createTransformStore() {
 		 * Reset transform to default state.
 		 */
 		reset: () => {
-			set({ x: 0, y: 0, scale: 1 });
+			broadcastSet(INITIAL_TRANSFORM);
 		}
 	};
 }

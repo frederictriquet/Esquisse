@@ -1,10 +1,13 @@
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 import type { Stroke } from '$lib/types';
 
 export interface DrawingState {
 	strokes: Stroke[];
 	currentStroke: Stroke | null;
 }
+
+const CHANNEL_NAME = 'esquisse-drawing';
 
 function createDrawingStore() {
 	const initialState: DrawingState = {
@@ -14,6 +17,38 @@ function createDrawingStore() {
 
 	const { subscribe, set, update } = writable<DrawingState>(initialState);
 
+	// BroadcastChannel for multi-window sync
+	let channel: BroadcastChannel | null = null;
+	let isReceiving = false;
+
+	if (browser) {
+		channel = new BroadcastChannel(CHANNEL_NAME);
+
+		channel.onmessage = (event) => {
+			isReceiving = true;
+			set(event.data);
+			isReceiving = false;
+		};
+	}
+
+	// Helper to broadcast updates
+	const broadcastUpdate = (fn: (state: DrawingState) => DrawingState) => {
+		update((state) => {
+			const newState = fn(state);
+			if (channel && !isReceiving) {
+				channel.postMessage(newState);
+			}
+			return newState;
+		});
+	};
+
+	const broadcastSet = (value: DrawingState) => {
+		set(value);
+		if (channel && !isReceiving) {
+			channel.postMessage(value);
+		}
+	};
+
 	return {
 		subscribe,
 
@@ -21,7 +56,7 @@ function createDrawingStore() {
 		 * Start a new stroke
 		 */
 		startStroke: (stroke: Stroke) => {
-			update((state) => ({
+			broadcastUpdate((state) => ({
 				...state,
 				currentStroke: stroke
 			}));
@@ -31,7 +66,7 @@ function createDrawingStore() {
 		 * Update the current stroke's points
 		 */
 		updateCurrentStroke: (points: { x: number; y: number }[]) => {
-			update((state) => {
+			broadcastUpdate((state) => {
 				if (!state.currentStroke) return state;
 
 				return {
@@ -48,7 +83,7 @@ function createDrawingStore() {
 		 * Finish the current stroke and add it to the strokes array
 		 */
 		finishStroke: () => {
-			update((state) => {
+			broadcastUpdate((state) => {
 				if (!state.currentStroke) return state;
 
 				return {
@@ -62,7 +97,7 @@ function createDrawingStore() {
 		 * Add a completed stroke directly (for undo/redo, imports, etc.)
 		 */
 		addStroke: (stroke: Stroke) => {
-			update((state) => ({
+			broadcastUpdate((state) => ({
 				...state,
 				strokes: [...state.strokes, stroke]
 			}));
@@ -72,14 +107,14 @@ function createDrawingStore() {
 		 * Clear all strokes and current stroke
 		 */
 		clear: () => {
-			set(initialState);
+			broadcastSet(initialState);
 		},
 
 		/**
 		 * Remove the last completed stroke (for undo functionality)
 		 */
 		removeLastStroke: () => {
-			update((state) => ({
+			broadcastUpdate((state) => ({
 				...state,
 				strokes: state.strokes.slice(0, -1)
 			}));
@@ -89,7 +124,7 @@ function createDrawingStore() {
 		 * Replace all strokes (for loading saved drawings)
 		 */
 		setStrokes: (strokes: Stroke[]) => {
-			update((state) => ({
+			broadcastUpdate((state) => ({
 				...state,
 				strokes
 			}));

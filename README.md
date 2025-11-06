@@ -88,13 +88,13 @@ This project includes comprehensive documentation to guide development from star
 | 3 | Enhanced Drawing | 3h | ✅ Complete (with Phase 2) |
 | 4 | Controls & UI | 4h | ✅ Complete |
 | 5 | State Management | 3h | ✅ Complete |
-| 6 | Multi-Window | 5h | 🔄 Next Phase |
-| 7 | File Persistence | 4h | ⏳ Pending |
+| 6 | Multi-Window Sync | 5h | ✅ Complete |
+| 7 | File Persistence | 4h | 🔄 Next Phase |
 | 8 | Polish | 4h | ⏳ Pending |
 | 9 | Desktop | 3h | ⏳ Pending |
 | 10 | Testing & Docs | 3h | ⏳ Pending |
 
-**Progress: 20/39 hours completed (~51%)**
+**Progress: 25/39 hours completed (~64%)**
 
 ---
 
@@ -107,7 +107,7 @@ This project includes comprehensive documentation to guide development from star
 - **Build Tool**: Vite
 - **Desktop**: Tauri (optional, Phase 9)
 
-### Current Features (Phases 0-5)
+### Current Features (Phases 0-6)
 - ✅ **Infinite canvas** with zoom/pan
 - ✅ **Mouse-centered zooming** (mouse wheel)
 - ✅ **Right-click panning**
@@ -119,10 +119,10 @@ This project includes comprehensive documentation to guide development from star
 - ✅ **Clear canvas** button
 - ✅ **Reset view** button
 - ✅ **Centralized state management** (Svelte stores)
+- ✅ **Multi-window presentation mode** (BroadcastChannel)
+- ✅ **Real-time synchronization** across windows
 
-### Planned Features (Phases 6-10)
-- ⏳ Dual-window presentation mode
-- ⏳ Real-time synchronization (BroadcastChannel)
+### Planned Features (Phases 7-10)
 - ⏳ Save/load drawings (JSON)
 - ⏳ Performance optimizations
 - ⏳ Desktop packaging (Tauri)
@@ -367,9 +367,10 @@ Detailed completion documentation available:
 - [PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md) - Enhanced drawing (completed with Phase 2)
 - [PHASE_4_COMPLETE.md](PHASE_4_COMPLETE.md) - Drawing controls & UI (toolbar)
 - [PHASE_5_COMPLETE.md](PHASE_5_COMPLETE.md) - State management & stores
+- [PHASE_6_COMPLETE.md](PHASE_6_COMPLETE.md) - Multi-window synchronization
 
 ---
 
 **Last Updated**: 2025-11-06
-**Status**: Phases 0-5 Complete (51% done)
-**Next Step**: Phase 6 - Multi-Window Synchronization
+**Status**: Phases 0-6 Complete (64% done)
+**Next Step**: Phase 7 - File Persistence (Save/Load)

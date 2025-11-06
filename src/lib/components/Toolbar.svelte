@@ -1,14 +1,48 @@
 <script lang="ts">
 	import { settings } from '$lib/stores/settings';
 	import { transform } from '$lib/stores/transform';
+	import { browser } from '$app/environment';
 
 	export let onClear: () => void;
 
 	let colorValue = $settings.color;
 	let widthValue = $settings.width;
+	let presentationWindow: Window | null = null;
 
 	function handleResetView() {
 		transform.reset();
+	}
+
+	function openPresentation() {
+		if (!browser) return;
+
+		// Check if window is already open
+		if (presentationWindow && !presentationWindow.closed) {
+			presentationWindow.focus();
+			return;
+		}
+
+		// Open presentation window
+		const width = 1024;
+		const height = 768;
+		const left = window.screenX + (window.outerWidth - width) / 2;
+		const top = window.screenY + (window.outerHeight - height) / 2;
+
+		presentationWindow = window.open(
+			'/present',
+			'esquisse-presentation',
+			`width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no`
+		);
+
+		// Monitor when window closes
+		if (presentationWindow) {
+			const checkClosed = setInterval(() => {
+				if (presentationWindow && presentationWindow.closed) {
+					presentationWindow = null;
+					clearInterval(checkClosed);
+				}
+			}, 500);
+		}
 	}
 
 	// Update store when inputs change
@@ -78,6 +112,10 @@
 
 	<div class="toolbar-section">
 		<button class="reset-button" on:click={handleResetView}> Reset View </button>
+	</div>
+
+	<div class="toolbar-section">
+		<button class="present-button" on:click={openPresentation}> Open Presentation </button>
 	</div>
 </div>
 
@@ -239,6 +277,27 @@
 	}
 
 	.reset-button:active {
+		transform: translateY(1px);
+	}
+
+	.present-button {
+		width: 100%;
+		padding: 10px 16px;
+		background: #28a745;
+		color: white;
+		border: none;
+		border-radius: 4px;
+		font-size: 13px;
+		font-weight: 500;
+		cursor: pointer;
+		transition: background 0.2s ease;
+	}
+
+	.present-button:hover {
+		background: #218838;
+	}
+
+	.present-button:active {
 		transform: translateY(1px);
 	}
 </style>
