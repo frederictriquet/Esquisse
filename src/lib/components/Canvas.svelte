@@ -2,8 +2,9 @@
 	import { onMount } from 'svelte';
 	import { transform } from '$lib/stores/transform';
 	import { settings } from '$lib/stores/settings';
+	import { drawing } from '$lib/stores/drawing';
 	import { screenToWorld } from '$lib/utils/coordinates';
-	import type { Stroke, Point } from '$lib/types';
+	import type { Point, Stroke } from '$lib/types';
 
 	// Canvas reference
 	let canvas: HTMLCanvasElement;
@@ -13,15 +14,14 @@
 	let isDrawing = false;
 	let isPanning = false;
 	let lastPanPoint: Point | null = null;
-	let currentStroke: Stroke | null = null;
-	let strokes: Stroke[] = [];
+
+	// Subscribe to drawing store
+	$: strokes = $drawing.strokes;
+	$: currentStroke = $drawing.currentStroke;
 
 	// Export clear function for toolbar
 	export function clear() {
-		strokes = [];
-		currentStroke = null;
-		isDrawing = false;
-		renderCanvas();
+		drawing.clear();
 	}
 
 	// Subscribe to transform changes to trigger re-render
@@ -31,6 +31,9 @@
 		void $transform.x;
 		void $transform.y;
 		void $transform.scale;
+		// Also trigger on drawing state changes
+		void strokes;
+		void currentStroke;
 		renderCanvas();
 	}
 
@@ -85,15 +88,15 @@
 			// Convert screen position to world coordinates
 			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
 
-			// Create new stroke with world coordinates
+			// Start new stroke in drawing store
 			// Width is stored in world coordinates so it zooms naturally
-			currentStroke = {
+			drawing.startStroke({
 				id: crypto.randomUUID(),
 				color: $settings.color,
 				width: $settings.width / $transform.scale,
 				points: [worldPoint],
 				timestamp: Date.now()
-			};
+			});
 
 			// Capture pointer to ensure we receive all events
 			canvas.setPointerCapture(event.pointerId);
@@ -115,11 +118,8 @@
 			// Convert screen position to world coordinates
 			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
 
-			// Add point to current stroke
-			currentStroke.points.push(worldPoint);
-
-			// Re-render canvas with updated stroke
-			renderCanvas();
+			// Update current stroke in drawing store
+			drawing.updateCurrentStroke([...currentStroke.points, worldPoint]);
 		} else if (isPanning && lastPanPoint) {
 			// Calculate pan delta
 			const deltaX = screenPoint.x - lastPanPoint.x;
@@ -140,17 +140,13 @@
 		if (event.button === 0 && isDrawing && currentStroke) {
 			isDrawing = false;
 
-			// Add completed stroke to strokes array
-			strokes = [...strokes, currentStroke];
-			currentStroke = null;
+			// Finish current stroke in drawing store
+			drawing.finishStroke();
 
 			// Release pointer capture
 			if (canvas) {
 				canvas.releasePointerCapture(event.pointerId);
 			}
-
-			// Final render
-			renderCanvas();
 		} else if (event.button === 2 && isPanning) {
 			isPanning = false;
 			lastPanPoint = null;
