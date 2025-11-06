@@ -1,5 +1,12 @@
 <script lang="ts">
 	import Canvas from '$lib/components/Canvas.svelte';
+	import Toolbar from '$lib/components/Toolbar.svelte';
+
+	let canvasComponent: Canvas;
+
+	function handleClear() {
+		canvasComponent.clear();
+	}
 </script>
 
 <svelte:head>
@@ -7,8 +14,10 @@
 	<meta name="description" content="A simple drawing application built with SvelteKit" />
 </svelte:head>
 
+<Toolbar onClear={handleClear} />
+
 <main>
-	<Canvas />
+	<Canvas bind:this={canvasComponent} />
 </main>
 
 <style>

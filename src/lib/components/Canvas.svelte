@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { transform } from '$lib/stores/transform';
+	import { settings } from '$lib/stores/settings';
 	import { screenToWorld } from '$lib/utils/coordinates';
 	import type { Stroke, Point } from '$lib/types';
 
@@ -15,9 +16,13 @@
 	let currentStroke: Stroke | null = null;
 	let strokes: Stroke[] = [];
 
-	// Drawing settings (simple defaults for Phase 1)
-	const DEFAULT_COLOR = '#000000';
-	const DEFAULT_WIDTH = 2;
+	// Export clear function for toolbar
+	export function clear() {
+		strokes = [];
+		currentStroke = null;
+		isDrawing = false;
+		renderCanvas();
+	}
 
 	// Subscribe to transform changes to trigger re-render
 	// Need to reference specific properties to make reactivity work
@@ -84,8 +89,8 @@
 			// Width is stored in world coordinates so it zooms naturally
 			currentStroke = {
 				id: crypto.randomUUID(),
-				color: DEFAULT_COLOR,
-				width: DEFAULT_WIDTH / $transform.scale,
+				color: $settings.color,
+				width: $settings.width / $transform.scale,
 				points: [worldPoint],
 				timestamp: Date.now()
 			};
