@@ -5,12 +5,23 @@
 ```
 drawing-app/
 ├── .gitignore
+├── .dockerignore                   # Phase 11: Docker exclusions
 ├── package.json
 ├── package-lock.json
 ├── tsconfig.json
 ├── vite.config.ts
 ├── svelte.config.js
 ├── README.md
+├── Dockerfile                      # Phase 11: Docker image definition
+├── docker-compose.yml              # Phase 11: Local Docker setup
+├── nginx.conf                      # Phase 11: Nginx configuration
+│
+├── .github/                        # Phase 11: GitHub Actions CI/CD
+│   └── workflows/
+│       ├── ci.yml                  # Continuous integration
+│       ├── docker.yml              # Docker build & publish
+│       ├── tauri.yml               # Desktop app builds
+│       └── release.yml             # Release automation
 │
 ├── docs/                           # Documentation (this folder)
 │   ├── PROJECT_SPEC.md
@@ -18,7 +29,8 @@ drawing-app/
 │   ├── TECHNICAL_ARCHITECTURE.md
 │   ├── COMPONENT_SPECIFICATIONS.md
 │   ├── DATA_MODELS.md
-│   └── FILE_STRUCTURE.md (this file)
+│   ├── FILE_STRUCTURE.md (this file)
+│   └── DEPLOYMENT.md               # Phase 11: Deployment guide
 │
 ├── src/
 │   ├── app.html                    # HTML template
@@ -349,6 +361,63 @@ drawing-app/
 + tests/integration/multi-window-sync.test.ts
 + README.md (enhance)
 ```
+
+---
+
+### Phase 11: CI/CD & Deployment
+
+**Order**:
+1. Create GitHub Actions workflows
+2. Create Dockerfile for web app
+3. Configure Nginx for static serving
+4. Set up Docker Compose for local dev
+5. Configure Tauri CI builds
+6. Add deployment documentation
+
+**New Files**:
+```
++ .github/workflows/ci.yml           # Continuous integration
++ .github/workflows/docker.yml       # Docker build & publish
++ .github/workflows/tauri.yml        # Multi-platform desktop builds
++ .github/workflows/release.yml      # Release automation
++ Dockerfile                         # Multi-stage Docker build
++ .dockerignore                      # Docker build exclusions
++ nginx.conf                         # Nginx static file server config
++ docker-compose.yml                 # Local Docker development
++ docs/DEPLOYMENT.md                 # Deployment guide
+```
+
+**Modified Files**:
+```
+~ .gitignore (add build artifacts)
+~ README.md (add build badges, Docker instructions)
+~ docs/CONTRIBUTING.md (add CI/CD workflow docs)
+```
+
+**GitHub Actions Workflows**:
+
+1. **ci.yml**: Runs on all pushes and PRs
+   - TypeScript compilation check
+   - Build verification
+   - Unit tests
+   - Linting and formatting
+
+2. **docker.yml**: Builds and publishes Docker image
+   - Triggers on main branch push
+   - Builds optimized production image
+   - Pushes to GitHub Container Registry
+   - Tags with version and latest
+
+3. **tauri.yml**: Cross-platform desktop builds
+   - Triggers on release tags
+   - Builds for Linux, Windows, macOS
+   - Creates platform-specific installers
+   - Attaches binaries to GitHub Release
+
+4. **release.yml**: Automates release process
+   - Creates git tags
+   - Generates changelog
+   - Triggers docker and tauri workflows
 
 ---
 

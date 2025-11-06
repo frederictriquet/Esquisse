@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Build output
+build/
+.svelte-kit/
+dist/
+
+# Tauri
+src-tauri/target/
+src-tauri/Cargo.lock
+
+# Tests
+coverage/
+*.test.ts
+*.spec.ts
+
+# Development
+.env
+.env.*
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+
+# Documentation
+*.md
+docs/
+
+# OS files
+.DS_Store
+Thumbs.db

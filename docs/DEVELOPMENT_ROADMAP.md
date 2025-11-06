@@ -375,6 +375,326 @@ This document outlines the progressive development phases for the drawing app. E
 
 ---
 
+## Phase 11: CI/CD & Deployment Automation
+**Goal**: Automated builds and deployment pipeline
+**Duration**: 3-4 hours
+**Dependencies**: Phase 9, 10
+
+### Features
+- [ ] GitHub Actions workflows for CI/CD
+- [ ] Docker image build and publish
+- [ ] Multi-platform Tauri builds (Linux, Windows, macOS)
+- [ ] Automated testing in CI
+- [ ] Release automation
+
+### GitHub Actions Workflows
+
+#### 1. Web App Docker Build & Publish
+**File**: `.github/workflows/docker.yml`
+
+Triggers:
+- Push to `main` branch
+- Manual workflow dispatch
+- Release tags
+
+Steps:
+1. Build optimized production bundle
+2. Create minimal Docker image (Nginx + static files)
+3. Push to GitHub Container Registry (ghcr.io)
+4. Tag with version and `latest`
+
+Image size target: ~15-20MB (Alpine-based Nginx)
+
+#### 2. Tauri Desktop Builds
+**File**: `.github/workflows/tauri.yml`
+
+Triggers:
+- Release tags (`v*`)
+- Manual workflow dispatch
+
+Platforms:
+- **Linux**: AppImage, .deb, .rpm
+- **Windows**: .exe, .msi
+- **macOS**: .dmg, .app (Intel + Apple Silicon)
+
+Build matrix:
+```yaml
+strategy:
+  matrix:
+    platform:
+      - ubuntu-latest   # Linux builds
+      - windows-latest  # Windows builds
+      - macos-latest    # macOS builds
+```
+
+Artifacts:
+- Binaries attached to GitHub Release
+- Checksums for verification
+- Auto-generated release notes
+
+#### 3. Continuous Integration
+**File**: `.github/workflows/ci.yml`
+
+Triggers:
+- Pull requests
+- Push to any branch
+
+Checks:
+- TypeScript compilation (`npm run check`)
+- Build verification (`npm run build`)
+- Unit tests (`npm run test`)
+- Linting (`npm run lint`)
+- Format check (`npm run format:check`)
+
+#### 4. Release Automation
+**File**: `.github/workflows/release.yml`
+
+Triggers:
+- Manual workflow with version input
+- Creates git tag
+- Triggers docker and tauri workflows
+- Generates changelog from commits
+
+### Docker Configuration
+
+#### Dockerfile
+```dockerfile
+# Build stage
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+COPY --from=builder /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+#### Features
+- Multi-stage build (minimal final image)
+- Static file serving via Nginx
+- Gzip compression enabled
+- Cache headers configured
+- Health check endpoint
+
+### Tauri Build Configuration
+
+#### Cross-Platform Support
+
+**Linux**:
+- Ubuntu 20.04+ (AppImage)
+- Debian/Ubuntu (.deb)
+- Fedora/RHEL (.rpm)
+- Dependencies: webkit2gtk, OpenSSL
+
+**Windows**:
+- Windows 10+ (64-bit)
+- MSI installer with auto-update
+- EXE portable version
+- Code signing (optional)
+
+**macOS**:
+- macOS 10.15+
+- Universal binary (Intel + ARM)
+- DMG installer
+- App notarization (requires Apple Developer account)
+
+#### Build Optimizations
+- Strip debug symbols
+- Optimize binary size
+- Enable LTO (Link Time Optimization)
+- Compress resources
+- Target size: 8-12MB per platform
+
+### Deployment Strategies
+
+#### Docker Deployment Options
+
+1. **GitHub Container Registry**
+   ```bash
+   docker pull ghcr.io/USERNAME/esquisse:latest
+   docker run -p 8080:80 ghcr.io/USERNAME/esquisse:latest
+   ```
+
+2. **Docker Hub** (alternative)
+   ```bash
+   docker pull username/esquisse:latest
+   docker run -p 8080:80 username/esquisse:latest
+   ```
+
+3. **Self-hosted**
+   - Docker Compose configuration
+   - Kubernetes manifests
+   - Reverse proxy (Traefik/Nginx)
+
+#### Desktop Distribution
+
+1. **GitHub Releases**
+   - Primary distribution method
+   - Automatic updates via Tauri
+   - Versioned releases
+
+2. **Package Managers** (future)
+   - Homebrew (macOS)
+   - Chocolatey (Windows)
+   - Snap/Flatpak (Linux)
+
+### Technical Requirements
+
+#### Repository Secrets
+- `GITHUB_TOKEN`: Automatically provided
+- `DOCKER_USERNAME`: Docker Hub username (optional)
+- `DOCKER_PASSWORD`: Docker Hub token (optional)
+- `APPLE_CERTIFICATE`: macOS signing cert (optional)
+- `APPLE_CERTIFICATE_PASSWORD`: Cert password (optional)
+
+#### Build Dependencies
+- Node.js 20+
+- Rust toolchain (for Tauri)
+- Platform-specific SDKs
+- Docker engine (for image builds)
+
+### Success Criteria
+- Docker image builds successfully
+- Image published to registry automatically
+- Tauri builds for all platforms
+- Binaries attached to releases
+- CI catches issues before merge
+- One-command deployment
+
+### Deliverables
+
+#### Workflow Files
+1. `.github/workflows/docker.yml` - Docker build & publish
+2. `.github/workflows/tauri.yml` - Desktop app builds
+3. `.github/workflows/ci.yml` - Continuous integration
+4. `.github/workflows/release.yml` - Release automation
+
+#### Configuration Files
+5. `Dockerfile` - Docker image definition
+6. `nginx.conf` - Nginx configuration
+7. `docker-compose.yml` - Local Docker development
+8. `.dockerignore` - Docker build exclusions
+
+#### Documentation
+9. `DEPLOYMENT.md` - Deployment guide
+10. `CONTRIBUTING.md` - CI/CD workflow docs
+
+### Workflow Examples
+
+#### Docker Workflow (Simplified)
+```yaml
+name: Docker Build & Publish
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+```
+
+#### Tauri Workflow (Simplified)
+```yaml
+name: Tauri Build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies (Linux)
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev \
+            libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v__VERSION__
+          releaseName: 'Esquisse v__VERSION__'
+          releaseBody: 'See CHANGELOG.md for details'
+          releaseDraft: true
+          prerelease: false
+```
+
+### Performance Targets
+
+- **CI Pipeline**: < 5 minutes for checks
+- **Docker Build**: < 3 minutes
+- **Tauri Build**: < 10 minutes per platform
+- **Total Release Time**: < 30 minutes (all platforms)
+
+### Monitoring & Notifications
+
+- Build status badges in README
+- Slack/Discord notifications (optional)
+- Email on build failures
+- Release announcements
+
+---
+
 ## Total Estimated Timeline
 
 | Phase | Duration | Cumulative |
@@ -390,8 +710,9 @@ This document outlines the progressive development phases for the drawing app. E
 | Phase 8: Polish & Optimization | 4h | 33h |
 | Phase 9: Desktop Packaging | 3h | 36h |
 | Phase 10: Testing & Docs | 3h | 39h |
+| Phase 11: CI/CD & Deployment | 4h | 43h |
 
-**Total**: ~39 hours (~5 working days)
+**Total**: ~43 hours (~5.5 working days)
 
 ---
 
@@ -400,18 +721,25 @@ This document outlines the progressive development phases for the drawing app. E
 ### Must Have (MVP)
 - Phases 0-7: Core functionality
 - Minimum viable product with all key features
+- Web-based drawing application fully functional
 
 ### Should Have
 - Phase 8: Polish & Optimization
-- Important for good user experience
+- Phase 10: Testing & Documentation
+- Important for production readiness and maintainability
 
 ### Nice to Have
 - Phase 9: Desktop Packaging
-- Can be web-only initially
+- Phase 11: CI/CD & Deployment Automation
+- Can start with web-only version
+- Desktop and automation enhance distribution
 
 ### Future Enhancements
-- Phase 10+: Additional features
-- Undo/redo, layers, shapes, etc.
+- Additional drawing tools (shapes, text, layers)
+- Collaboration features (real-time multi-user)
+- Cloud storage integration
+- Advanced export options (PDF, SVG animations)
+- Plugin system for extensibility
 
 ---
 
@@ -428,6 +756,15 @@ This document outlines the progressive development phases for the drawing app. E
 
 ### Risk: Coordinate math errors
 **Mitigation**: Phase 3 dedicated to this; test extensively at various scales
+
+### Risk: Cross-platform build failures
+**Mitigation**: Use proven GitHub Actions; test locally with Tauri CLI before CI
+
+### Risk: Docker image bloat
+**Mitigation**: Multi-stage builds; Alpine base images; monitor image size in CI
+
+### Risk: macOS code signing complexity
+**Mitigation**: Make signing optional; document setup; provide unsigned builds initially
 
 ---
 

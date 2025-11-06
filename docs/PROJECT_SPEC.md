@@ -73,3 +73,28 @@ A lightweight drawing application with infinite zoom/pan capabilities and dual-w
 - Touch screen support
 - Mobile app
 - Cloud storage/sync
+
+## Deployment & Distribution
+
+### Web Application
+- **Hosting**: Static file serving (GitHub Pages, Netlify, Vercel, or self-hosted)
+- **Docker Support**: Pre-built Docker image for easy deployment
+  - Alpine-based Nginx image (~15-20MB)
+  - Available on GitHub Container Registry
+  - One-command deployment: `docker run -p 8080:80 ghcr.io/USER/esquisse`
+- **Requirements**: Any HTTP server capable of serving static files
+
+### Desktop Application
+- **Distribution**: GitHub Releases
+- **Platforms**:
+  - Linux: AppImage (portable), .deb (Ubuntu/Debian), .rpm (Fedora/RHEL)
+  - Windows: .exe (portable), .msi (installer with auto-update)
+  - macOS: .dmg (Intel + Apple Silicon universal binary)
+- **Updates**: Built-in auto-update via Tauri
+- **Size Target**: 8-12MB per platform
+
+### CI/CD Automation
+- **Continuous Integration**: Automated testing on all pushes/PRs
+- **Docker Builds**: Automatic image build and publish on main branch
+- **Desktop Builds**: Multi-platform builds on release tags
+- **Release Process**: Automated with changelog generation

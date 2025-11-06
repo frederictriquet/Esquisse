@@ -144,36 +144,31 @@ function createDrawingStore() {
 		 * Save drawing to file
 		 */
 		save: async (filename?: string): Promise<void> => {
-			return new Promise((resolve, reject) => {
-				try {
-					let currentState: DrawingState | undefined;
-					const unsubscribe = subscribe((state) => {
-						currentState = state;
-					});
-					unsubscribe();
+			try {
+				let currentState: DrawingState | undefined;
+				const unsubscribe = subscribe((state) => {
+					currentState = state;
+				});
+				unsubscribe();
 
-					if (!currentState) {
-						reject(new Error('Failed to get drawing state'));
-						return;
-					}
-
-					const file = createEsquisseFile(
-						currentState.strokes,
-						currentState.currentFile || undefined
-					);
-					downloadEsquisseFile(file, filename);
-
-					// Update current file reference
-					update((state) => ({
-						...state,
-						currentFile: file
-					}));
-
-					resolve();
-				} catch (error) {
-					reject(error);
+				if (!currentState) {
+					throw new Error('Failed to get drawing state');
 				}
-			});
+
+				const file = createEsquisseFile(
+					currentState.strokes,
+					currentState.currentFile || undefined
+				);
+				await downloadEsquisseFile(file, filename);
+
+				// Update current file reference
+				update((state) => ({
+					...state,
+					currentFile: file
+				}));
+			} catch (error) {
+				throw error;
+			}
 		},
 
 		/**

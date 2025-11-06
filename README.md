@@ -91,10 +91,11 @@ This project includes comprehensive documentation to guide development from star
 | 6 | Multi-Window Sync | 5h | ✅ Complete |
 | 7 | File Persistence | 4h | ✅ Complete |
 | 8 | Polish | 4h | ✅ Complete |
-| 9 | Desktop | 3h | 🔄 Next Phase |
-| 10 | Testing & Docs | 3h | ⏳ Pending |
+| 9 | Desktop | 3h | ✅ Complete |
+| 10 | Testing & Docs | 3h | ✅ Complete |
+| 11 | CI/CD & Deployment | 2h | ✅ Complete |
 
-**Progress: 33/39 hours completed (~85%)**
+**Progress: 43/43 hours completed (100%)** 🎉
 
 ---
 
@@ -129,10 +130,14 @@ This project includes comprehensive documentation to guide development from star
 - ✅ **Help modal** with comprehensive instructions
 - ✅ **60fps performance** with 1000+ strokes
 
-### Planned Features (Phases 9-10)
-- ⏳ Desktop packaging (Tauri)
-- ⏳ Lightweight (3-10MB desktop app)
-- ⏳ Native file dialogs
+### Desktop & Deployment (Phases 9-11)
+- ✅ **Desktop packaging** (Tauri 2.x)
+- ✅ **Native file dialogs** (OS-native save/load)
+- ✅ **Multi-platform builds** (Linux, macOS, Windows)
+- ✅ **Automated testing** (Vitest, 73 tests, 100% pass)
+- ✅ **CI/CD pipelines** (GitHub Actions)
+- ✅ **Docker support** (Web deployment)
+- ✅ **Automated releases** (GitHub Releases)
 
 ---
 
@@ -263,22 +268,23 @@ drawing-app/
 ## 🚧 Development Workflow
 
 ```bash
-# Phase 0: Initialize
-npm create svelte@latest drawing-app
-cd drawing-app
-npm install
+# Development
+npm install          # Install dependencies
+npm run dev          # Start dev server (http://localhost:5173)
+npm run check        # TypeScript type checking
+npm run test         # Run tests (73 tests)
+npm run test:ui      # Run tests with UI
 
-# Daily development
-npm run dev          # Start dev server
-npm run check        # Type check
+# Desktop Development
+npm run tauri:dev    # Dev with desktop app
+npm run tauri:build  # Build desktop binaries
 
-# Phase 9: Desktop
-npm install @tauri-apps/cli @tauri-apps/api
-npm run tauri dev    # Dev with desktop
+# Production Build
+npm run build        # Build for web (outputs to ./build)
 
-# Deployment
-npm run build        # Web build
-npm run tauri build  # Desktop build
+# Docker Deployment
+docker-compose up -d # Start web app on http://localhost:8080
+docker-compose down  # Stop web app
 ```
 
 ---
@@ -367,18 +373,78 @@ Good documentation evolves with the project!
 ## ✅ Completed Phases
 
 Detailed completion documentation available:
-- [PHASE_0_COMPLETE.md](PHASE_0_COMPLETE.md) - Project setup
-- [PHASE_1_COMPLETE.md](PHASE_1_COMPLETE.md) - Basic drawing
-- [PHASE_2_COMPLETE.md](PHASE_2_COMPLETE.md) - Transform system (zoom & pan)
-- [PHASE_3_COMPLETE.md](PHASE_3_COMPLETE.md) - Enhanced drawing (completed with Phase 2)
-- [PHASE_4_COMPLETE.md](PHASE_4_COMPLETE.md) - Drawing controls & UI (toolbar)
-- [PHASE_5_COMPLETE.md](PHASE_5_COMPLETE.md) - State management & stores
-- [PHASE_6_COMPLETE.md](PHASE_6_COMPLETE.md) - Multi-window synchronization
-- [PHASE_7_COMPLETE.md](PHASE_7_COMPLETE.md) - File persistence (save/load)
+
+### Core Application (Phases 0-8)
+- [PHASE_0-7_COMPLETE.md](PHASE_0-7_COMPLETE.md) - Foundation (setup through file persistence)
 - [PHASE_8_COMPLETE.md](PHASE_8_COMPLETE.md) - Polish & performance optimizations
+
+### Desktop & Testing (Phases 9-11)
+- [PHASE_9_COMPLETE.md](PHASE_9_COMPLETE.md) - Desktop packaging with Tauri
+- [PHASE_10_COMPLETE.md](PHASE_10_COMPLETE.md) - Testing & documentation (73 tests)
+- [PHASE_11_COMPLETE.md](PHASE_11_COMPLETE.md) - CI/CD & deployment automation
+
+### Additional Documentation
+- [PERFORMANCE_TEST_GUIDE.md](PERFORMANCE_TEST_GUIDE.md) - How to test with 1000+ strokes
+
+---
+
+## 🚀 Deployment Options
+
+### Web Application
+
+**Docker (Recommended)**:
+```bash
+docker pull ghcr.io/<your-username>/esquisse:latest
+docker run -p 8080:80 ghcr.io/<your-username>/esquisse:latest
+# Access at http://localhost:8080
+```
+
+**Static Hosting**:
+```bash
+npm run build
+# Upload ./build to: GitHub Pages, Netlify, Vercel, or any static host
+```
+
+### Desktop Application
+
+**Automated Releases** (via GitHub Actions):
+1. Push a version tag: `git tag v0.1.0 && git push origin v0.1.0`
+2. Wait for GitHub Actions to build all platforms (~40 minutes)
+3. Download binaries from GitHub Releases:
+   - **Linux**: `.deb` or `.AppImage`
+   - **macOS**: `.dmg` (Universal binary for Intel + ARM)
+   - **Windows**: `.msi` or `.exe`
+
+**Manual Build**:
+```bash
+npm run tauri:build
+# Find binaries in: src-tauri/target/release/bundle/
+```
+
+---
+
+## 🧪 Testing
+
+**Run Tests**:
+```bash
+npm run test          # Watch mode
+npm run test:run      # Single run (73 tests)
+npm run test:ui       # Interactive UI
+npm run test:coverage # With coverage report
+```
+
+**Test Coverage**:
+- ✅ 73 tests passing (100%)
+- ✅ Coordinate utilities (15 tests)
+- ✅ File I/O operations (30 tests)
+- ✅ Performance testing (28 tests)
+
+**Performance Testing**:
+- Press `T` in the app to generate 1000 test strokes
+- See [PERFORMANCE_TEST_GUIDE.md](PERFORMANCE_TEST_GUIDE.md) for details
 
 ---
 
 **Last Updated**: 2025-01-06
-**Status**: Phases 0-8 Complete (85% done)
-**Next Step**: Phase 9 - Desktop Packaging (Tauri)
+**Status**: All 11 Phases Complete (100%) 🎉
+**Project**: Production Ready

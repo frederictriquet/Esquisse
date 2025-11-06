@@ -1,9 +1,38 @@
 /**
  * File I/O utilities for Esquisse drawing application
  * Handles save/load functionality for drawing files
+ * Supports both browser and Tauri (desktop) environments
  */
 
 import type { Stroke } from '$lib/types';
+
+// Tauri imports (tree-shakeable - won't be included in browser builds)
+let tauriDialog: typeof import('@tauri-apps/plugin-dialog') | null = null;
+let tauriFs: typeof import('@tauri-apps/plugin-fs') | null = null;
+
+// Dynamically import Tauri modules only when in Tauri environment
+async function initTauri() {
+	if (typeof window !== 'undefined' && '__TAURI__' in window) {
+		try {
+			tauriDialog = await import('@tauri-apps/plugin-dialog');
+			tauriFs = await import('@tauri-apps/plugin-fs');
+		} catch (e) {
+			console.warn('Tauri plugins not available:', e);
+		}
+	}
+}
+
+// Initialize on module load
+if (typeof window !== 'undefined') {
+	initTauri();
+}
+
+/**
+ * Check if running in Tauri environment
+ */
+function isTauri(): boolean {
+	return typeof window !== 'undefined' && '__TAURI__' in window && tauriDialog !== null && tauriFs !== null;
+}
 
 // File format version for compatibility
 export const FILE_FORMAT_VERSION = '1.0';
@@ -145,15 +174,40 @@ export function deserializeEsquisseFile(json: string): EsquisseFile {
 
 /**
  * Downloads an Esquisse file to the user's computer
+ * Uses Tauri's native save dialog when available, otherwise falls back to browser download
  */
-export function downloadEsquisseFile(file: EsquisseFile, filename?: string): void {
+export async function downloadEsquisseFile(file: EsquisseFile, filename?: string): Promise<void> {
 	const json = serializeEsquisseFile(file);
+	const defaultFilename = filename || `esquisse-${Date.now()}.json`;
+
+	// Use Tauri's native save dialog if available
+	if (isTauri() && tauriDialog && tauriFs) {
+		try {
+			const filePath = await tauriDialog.save({
+				defaultPath: defaultFilename,
+				filters: [{
+					name: 'Esquisse Drawing',
+					extensions: ['json']
+				}]
+			});
+
+			if (filePath) {
+				await tauriFs.writeTextFile(filePath, json);
+				console.log('File saved successfully:', filePath);
+			}
+			return;
+		} catch (error) {
+			console.error('Tauri save failed, falling back to browser download:', error);
+		}
+	}
+
+	// Browser fallback
 	const blob = new Blob([json], { type: 'application/json' });
 	const url = URL.createObjectURL(blob);
 
 	const link = document.createElement('a');
 	link.href = url;
-	link.download = filename || `esquisse-${Date.now()}.json`;
+	link.download = defaultFilename;
 
 	// Trigger download
 	document.body.appendChild(link);
@@ -191,8 +245,34 @@ export async function readEsquisseFile(file: File): Promise<EsquisseFile> {
 
 /**
  * Creates a file input element and triggers file selection
+ * Uses Tauri's native open dialog when available
  */
-export function selectFile(): Promise<File | null> {
+export async function selectFile(): Promise<File | null> {
+	// Use Tauri's native open dialog if available
+	if (isTauri() && tauriDialog && tauriFs) {
+		try {
+			const filePath = await tauriDialog.open({
+				multiple: false,
+				filters: [{
+					name: 'Esquisse Drawing',
+					extensions: ['json']
+				}]
+			});
+
+			if (filePath && typeof filePath === 'string') {
+				const contents = await tauriFs.readTextFile(filePath);
+				// Create a File-like object for compatibility
+				const blob = new Blob([contents], { type: 'application/json' });
+				const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || 'drawing.json';
+				return new File([blob], fileName, { type: 'application/json' });
+			}
+			return null;
+		} catch (error) {
+			console.error('Tauri open failed, falling back to browser dialog:', error);
+		}
+	}
+
+	// Browser fallback
 	return new Promise((resolve) => {
 		const input = document.createElement('input');
 		input.type = 'file';
