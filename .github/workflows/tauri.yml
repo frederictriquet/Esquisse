@@ -55,6 +55,21 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev
 
+      - name: Setup Windows dependencies
+        if: matrix.platform.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          # Install WebView2 (required for Tauri)
+          Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "$env:TEMP\MicrosoftEdgeWebview2Setup.exe"
+          Start-Process -Wait -FilePath "$env:TEMP\MicrosoftEdgeWebview2Setup.exe" -ArgumentList "/silent /install"
+
+          # Clean any old WiX cache that might be corrupted
+          $wixPath = "$env:LOCALAPPDATA\tauri\WixTools"
+          if (Test-Path $wixPath) {
+            Remove-Item -Path $wixPath -Recurse -Force
+            Write-Host "Cleaned old WiX cache"
+          }
+
       - name: Install frontend dependencies
         run: npm ci
 
@@ -63,6 +78,7 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: npm run tauri:build -- --target ${{ matrix.platform.target }}
+        shell: ${{ matrix.platform.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
       - name: Upload artifacts (Linux)
         if: matrix.platform.os == 'ubuntu-latest'

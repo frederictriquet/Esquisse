@@ -3,6 +3,7 @@
 	import { transform } from '$lib/stores/transform';
 	import { drawing } from '$lib/stores/drawing';
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 
 	export let onClear: () => void;
 	export let onHelp: (() => void) | undefined = undefined;
@@ -14,6 +15,22 @@
 	let loadError = '';
 	let saveSuccess = false;
 	let loadSuccess = false;
+
+	// Tauri window API (dynamically imported)
+	let TauriWindow: any = null;
+	let isTauri = false;
+
+	onMount(async () => {
+		if (typeof window !== 'undefined' && '__TAURI__' in window) {
+			try {
+				const windowModule = await import('@tauri-apps/api/window');
+				TauriWindow = windowModule.Window;
+				isTauri = true;
+			} catch (e) {
+				console.warn('Tauri window API not available:', e);
+			}
+		}
+	});
 
 	function clearMessages() {
 		saveError = '';
@@ -58,9 +75,47 @@
 		transform.reset();
 	}
 
-	function openPresentation() {
+	async function openPresentation() {
 		if (!browser) return;
 
+		// Use Tauri window API if available
+		if (isTauri && TauriWindow) {
+			try {
+				// Check if presentation window already exists
+				const windows = await TauriWindow.getAll();
+				const existingWindow = windows.find((w: any) => w.label === 'presentation');
+
+				if (existingWindow) {
+					await existingWindow.setFocus();
+					return;
+				}
+
+				// Create new Tauri window
+				const presentationTauriWindow = new TauriWindow('presentation', {
+					url: '/present',
+					title: 'Esquisse Presentation',
+					width: 1024,
+					height: 768,
+					center: true,
+					resizable: true,
+					fullscreen: false
+				});
+
+				await presentationTauriWindow.once('tauri://created', () => {
+					console.log('Presentation window created');
+				});
+
+				await presentationTauriWindow.once('tauri://error', (e: any) => {
+					console.error('Failed to create presentation window:', e);
+				});
+
+			} catch (error) {
+				console.error('Error opening Tauri presentation window:', error);
+			}
+			return;
+		}
+
+		// Browser fallback: use window.open()
 		// Check if window is already open
 		if (presentationWindow && !presentationWindow.closed) {
 			presentationWindow.focus();
