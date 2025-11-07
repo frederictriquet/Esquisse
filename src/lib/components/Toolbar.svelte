@@ -40,6 +40,12 @@
 		loadSuccess = false;
 	}
 
+	function handleClear() {
+		if (confirm('Are you sure you want to clear the canvas? This action cannot be undone.')) {
+			onClear();
+		}
+	}
+
 	async function handleSave() {
 		clearMessages();
 		try {
@@ -161,6 +167,8 @@
 </script>
 
 <div class="toolbar">
+	<div class="zoom-indicator">{Math.round($transform.scale * 100)}%</div>
+
 	<div class="toolbar-section">
 		<h3>Drawing Tools</h3>
 	</div>
@@ -183,7 +191,15 @@
 
 	<div class="toolbar-section">
 		<label for="width-slider">
-			<span class="label-text">Width: {widthValue}px</span>
+			<div class="width-header">
+				<span class="label-text width-label">Width: {widthValue}px</span>
+				<div class="width-preview">
+					<div
+						class="preview-line"
+						style="height: {widthValue}px; background-color: {colorValue};"
+					/>
+				</div>
+			</div>
 			<input
 				id="width-slider"
 				type="range"
@@ -195,16 +211,10 @@
 				class="width-slider"
 			/>
 		</label>
-		<div class="width-preview">
-			<div
-				class="preview-line"
-				style="height: {widthValue}px; background-color: {colorValue};"
-			/>
-		</div>
 	</div>
 
 	<div class="toolbar-section">
-		<button class="clear-button" on:click={onClear}> Clear Canvas </button>
+		<button class="clear-button" on:click={handleClear}> Clear Canvas </button>
 	</div>
 
 	<div class="toolbar-section">
@@ -345,15 +355,29 @@
 		background: #0056b3;
 	}
 
+	.width-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+		margin-bottom: 8px;
+	}
+
+	.width-label {
+		width: 85px;
+		flex-shrink: 0;
+	}
+
 	.width-preview {
-		margin-top: 12px;
-		padding: 8px;
+		padding: 6px 12px;
 		background: #f8f8f8;
 		border-radius: 4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 30px;
+		min-width: 80px;
+		flex: 1;
+		min-height: 24px;
 	}
 
 	.preview-line {
@@ -508,5 +532,21 @@
 
 	.help-button:active {
 		transform: translateY(1px);
+	}
+
+	.zoom-indicator {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		padding: 4px 8px;
+		background: rgba(0, 123, 255, 0.1);
+		border: 1px solid rgba(0, 123, 255, 0.3);
+		border-radius: 4px;
+		font-size: 11px;
+		font-weight: 600;
+		color: #007bff;
+		font-family: monospace;
+		pointer-events: none;
+		user-select: none;
 	}
 </style>

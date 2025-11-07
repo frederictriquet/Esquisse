@@ -343,8 +343,8 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 		// Apply pinch zoom
 		if (touchState.initialDistance > 0) {
 			const distanceChange = distance - touchState.initialDistance;
-			// Use a sensitivity factor for smooth zooming
-			const zoomDelta = distanceChange * 0.5;
+			// Use a sensitivity factor for smooth zooming (higher = more responsive)
+			const zoomDelta = distanceChange * 2.5;
 			transform.zoom(zoomDelta, center.x, center.y);
 			touchState.initialDistance = distance;
 		}
