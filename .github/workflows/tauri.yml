@@ -63,17 +63,18 @@ jobs:
           Invoke-WebRequest -Uri "https://go.microsoft.com/fwlink/p/?LinkId=2124703" -OutFile "$env:TEMP\MicrosoftEdgeWebview2Setup.exe"
           Start-Process -Wait -FilePath "$env:TEMP\MicrosoftEdgeWebview2Setup.exe" -ArgumentList "/silent /install"
 
-          # Clean any old WiX cache that might be corrupted
-          $wixPath = "$env:LOCALAPPDATA\tauri\WixTools"
-          if (Test-Path $wixPath) {
-            Remove-Item -Path $wixPath -Recurse -Force
-            Write-Host "Cleaned old WiX cache"
-          }
-
       - name: Install frontend dependencies
         run: npm ci
 
-      - name: Build Tauri application
+      - name: Build Tauri application (Windows - NSIS only)
+        if: matrix.platform.os == 'windows-latest'
+        env:
+          TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
+          TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+        run: npm run tauri:build -- --target ${{ matrix.platform.target }} --bundles nsis
+
+      - name: Build Tauri application (Linux/macOS)
+        if: matrix.platform.os != 'windows-latest'
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
@@ -102,9 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: esquisse-${{ matrix.platform.name }}
-          path: |
-            src-tauri/target/${{ matrix.platform.target }}/release/bundle/msi/*.msi
-            src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis/*.exe
+          path: src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis/*.exe
 
   release:
     needs: build
