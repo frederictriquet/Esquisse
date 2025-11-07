@@ -16,6 +16,15 @@
 	let isPanning = false;
 	let lastPanPoint: Point | null = null;
 
+	// Touch state for gestures
+	let touchState: {
+		initialDistance: number | null;
+		lastCenter: Point | null;
+	} = {
+		initialDistance: null,
+		lastCenter: null
+	};
+
 	// Performance testing
 	let performanceTest = new PerformanceTest();
 	let lastCulledCount = 0;
@@ -253,6 +262,97 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	}
 
 	/**
+	 * Get touch center point and distance between two touches
+	 */
+	function getTouchInfo(touches: TouchList): { center: Point; distance: number } | null {
+		if (touches.length < 2) return null;
+
+		const touch1 = touches[0];
+		const touch2 = touches[1];
+
+		const rect = canvas.getBoundingClientRect();
+		const x1 = touch1.clientX - rect.left;
+		const y1 = touch1.clientY - rect.top;
+		const x2 = touch2.clientX - rect.left;
+		const y2 = touch2.clientY - rect.top;
+
+		const dx = x2 - x1;
+		const dy = y2 - y1;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+
+		const center = {
+			x: (x1 + x2) / 2,
+			y: (y1 + y2) / 2
+		};
+
+		return { center, distance };
+	}
+
+	/**
+	 * Handle touch start - prepare for pinch/pan gestures
+	 */
+	function handleTouchStart(event: TouchEvent) {
+		// Only handle two-finger gestures for zoom/pan
+		if (event.touches.length !== 2) {
+			touchState.initialDistance = null;
+			touchState.lastCenter = null;
+			return;
+		}
+
+		// Prevent default to avoid conflicts
+		event.preventDefault();
+
+		const info = getTouchInfo(event.touches);
+		if (info) {
+			touchState.initialDistance = info.distance;
+			touchState.lastCenter = info.center;
+		}
+	}
+
+	/**
+	 * Handle touch move - apply pinch zoom and two-finger pan
+	 */
+	function handleTouchMove(event: TouchEvent) {
+		// Only handle two-finger gestures
+		if (event.touches.length !== 2) return;
+
+		event.preventDefault();
+
+		const info = getTouchInfo(event.touches);
+		if (!info || !touchState.lastCenter || touchState.initialDistance === null) return;
+
+		const { center, distance } = info;
+
+		// Apply pinch zoom
+		if (touchState.initialDistance > 0) {
+			const distanceChange = distance - touchState.initialDistance;
+			// Use a sensitivity factor for smooth zooming
+			const zoomDelta = distanceChange * 0.5;
+			transform.zoom(zoomDelta, center.x, center.y);
+			touchState.initialDistance = distance;
+		}
+
+		// Apply pan based on center point movement
+		if (touchState.lastCenter) {
+			const deltaX = center.x - touchState.lastCenter.x;
+			const deltaY = center.y - touchState.lastCenter.y;
+			transform.pan(deltaX, deltaY);
+		}
+
+		touchState.lastCenter = center;
+	}
+
+	/**
+	 * Handle touch end - reset gesture state
+	 */
+	function handleTouchEnd(event: TouchEvent) {
+		if (event.touches.length < 2) {
+			touchState.initialDistance = null;
+			touchState.lastCenter = null;
+		}
+	}
+
+	/**
 	 * Check if a stroke is visible in the current viewport
 	 * Optimizes rendering by skipping offscreen strokes
 	 */
@@ -401,6 +501,10 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	on:pointerup={handlePointerUp}
 	on:wheel={handleWheel}
 	on:contextmenu={handleContextMenu}
+	on:touchstart={handleTouchStart}
+	on:touchmove={handleTouchMove}
+	on:touchend={handleTouchEnd}
+	on:touchcancel={handleTouchEnd}
 	class="drawing-canvas"
 />
 
