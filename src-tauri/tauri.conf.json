@@ -56,7 +56,7 @@
         "language": "en-US"
       },
       "nsis": {
-        "languages": ["en-US"],
+        "languages": ["English"],
         "displayLanguageSelector": false
       }
     }
