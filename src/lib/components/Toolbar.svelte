@@ -15,20 +15,45 @@
 	let loadError = '';
 	let saveSuccess = false;
 	let loadSuccess = false;
+	let presentationStatus = '';
 
 	// Tauri window API (dynamically imported)
-	let TauriWindow: any = null;
+	let WebviewWindow: any = null;
+	let getAllWebviewWindows: any = null;
 	let isTauri = false;
 
 	onMount(async () => {
+		console.log('onMount called');
+		console.log('window exists:', typeof window !== 'undefined');
+		console.log('__TAURI__ in window:', typeof window !== 'undefined' && '__TAURI__' in window);
+
+		if (typeof window !== 'undefined') {
+			console.log('window.__TAURI__:', (window as any).__TAURI__);
+		}
+
 		if (typeof window !== 'undefined' && '__TAURI__' in window) {
+			presentationStatus = 'Tauri detected, loading API...';
 			try {
-				const windowModule = await import('@tauri-apps/api/window');
-				TauriWindow = windowModule.Window;
+				console.log('Attempting to import @tauri-apps/api/webviewWindow...');
+				const webviewModule = await import('@tauri-apps/api/webviewWindow');
+				console.log('Import successful, module:', webviewModule);
+				WebviewWindow = webviewModule.WebviewWindow;
+				getAllWebviewWindows = webviewModule.getAllWebviewWindows;
+				console.log('WebviewWindow:', WebviewWindow);
+				console.log('getAllWebviewWindows:', getAllWebviewWindows);
 				isTauri = true;
+				console.log('Tauri webview API loaded successfully');
+				presentationStatus = 'Tauri API loaded!';
+				setTimeout(() => { presentationStatus = ''; }, 2000);
 			} catch (e) {
-				console.warn('Tauri window API not available:', e);
+				console.error('Tauri webview API not available:', e);
+				presentationStatus = 'Tauri API failed: ' + (e instanceof Error ? e.message : String(e));
+				setTimeout(() => { presentationStatus = ''; }, 5000);
 			}
+		} else {
+			console.log('Not in Tauri environment');
+			presentationStatus = 'Not in Tauri mode';
+			setTimeout(() => { presentationStatus = ''; }, 2000);
 		}
 	});
 
@@ -78,21 +103,41 @@
 	async function openPresentation() {
 		if (!browser) return;
 
-		// Use Tauri window API if available
-		if (isTauri && TauriWindow) {
+		presentationStatus = 'Opening...';
+		console.log('openPresentation called, isTauri:', isTauri, 'WebviewWindow:', !!WebviewWindow);
+
+		// Use Tauri webview API if available
+		if (isTauri && WebviewWindow && getAllWebviewWindows) {
+			presentationStatus = 'Using Tauri mode...';
 			try {
 				// Check if presentation window already exists
-				const windows = await TauriWindow.getAll();
+				console.log('Getting all webview windows...');
+				const windows = getAllWebviewWindows();
+				console.log('All windows:', windows.map((w: any) => w.label));
+
 				const existingWindow = windows.find((w: any) => w.label === 'presentation');
 
 				if (existingWindow) {
+					presentationStatus = 'Focusing existing window...';
+					console.log('Presentation window exists, focusing...');
 					await existingWindow.setFocus();
+					presentationStatus = 'Window focused!';
+					setTimeout(() => { presentationStatus = ''; }, 2000);
 					return;
 				}
 
-				// Create new Tauri window
-				const presentationTauriWindow = new TauriWindow('presentation', {
-					url: '/present',
+				// Create new Tauri webview window
+				presentationStatus = 'Creating window...';
+				console.log('Creating new presentation webview window...');
+
+				// Get the current window's base URL
+				const currentUrl = window.location.origin;
+				const presentationUrl = `${currentUrl}/present`;
+
+				console.log('Window URL:', presentationUrl);
+
+				const presentationWebview = new WebviewWindow('presentation', {
+					url: presentationUrl,
 					title: 'Esquisse Presentation',
 					width: 1024,
 					height: 768,
@@ -101,19 +146,20 @@
 					fullscreen: false
 				});
 
-				await presentationTauriWindow.once('tauri://created', () => {
-					console.log('Presentation window created');
-				});
-
-				await presentationTauriWindow.once('tauri://error', (e: any) => {
-					console.error('Failed to create presentation window:', e);
-				});
+				presentationStatus = 'Window created!';
+				console.log('Webview window created successfully');
+				setTimeout(() => { presentationStatus = ''; }, 2000);
 
 			} catch (error) {
 				console.error('Error opening Tauri presentation window:', error);
+				presentationStatus = 'Error: ' + (error instanceof Error ? error.message : String(error));
+				setTimeout(() => { presentationStatus = ''; }, 5000);
 			}
 			return;
 		}
+
+		// Not in Tauri mode
+		presentationStatus = 'Using browser mode...';
 
 		// Browser fallback: use window.open()
 		// Check if window is already open
@@ -252,6 +298,10 @@
 
 	{#if loadError}
 		<div class="message error">{loadError}</div>
+	{/if}
+
+	{#if presentationStatus}
+		<div class="message info">{presentationStatus}</div>
 	{/if}
 </div>
 
@@ -499,6 +549,12 @@
 		background: #f8d7da;
 		color: #721c24;
 		border: 1px solid #f5c6cb;
+	}
+
+	.message.info {
+		background: #d1ecf1;
+		color: #0c5460;
+		border: 1px solid #bee5eb;
 	}
 
 	.help-button {
