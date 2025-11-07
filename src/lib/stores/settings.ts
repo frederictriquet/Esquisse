@@ -4,12 +4,14 @@ import { browser } from '$app/environment';
 export interface DrawingSettings {
 	color: string;
 	width: number;
+	viewportCulling: boolean;
 }
 
 const CHANNEL_NAME = 'esquisse-settings';
 const INITIAL_SETTINGS: DrawingSettings = {
 	color: '#000000',
-	width: 2
+	width: 2,
+	viewportCulling: true
 };
 
 function createSettingsStore() {
@@ -51,6 +53,7 @@ function createSettingsStore() {
 		subscribe,
 		setColor: (color: string) => broadcastUpdate(s => ({ ...s, color })),
 		setWidth: (width: number) => broadcastUpdate(s => ({ ...s, width })),
+		setViewportCulling: (viewportCulling: boolean) => broadcastUpdate(s => ({ ...s, viewportCulling })),
 		reset: () => broadcastSet(INITIAL_SETTINGS)
 	};
 }

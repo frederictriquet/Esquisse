@@ -424,14 +424,20 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			$transform.y
 		);
 
-		// Draw only visible completed strokes (viewport culling optimization)
+		// Draw completed strokes (with optional viewport culling optimization)
 		// Strokes zoom naturally with the canvas transform
 		let culledCount = 0;
 		for (const stroke of strokes) {
-			if (isStrokeVisible(stroke)) {
-				drawStroke(stroke);
+			// Apply viewport culling only if enabled in settings
+			if ($settings.viewportCulling) {
+				if (isStrokeVisible(stroke)) {
+					drawStroke(stroke);
+				} else {
+					culledCount++;
+				}
 			} else {
-				culledCount++;
+				// Draw all strokes when culling is disabled
+				drawStroke(stroke);
 			}
 		}
 

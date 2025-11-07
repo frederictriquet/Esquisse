@@ -214,6 +214,18 @@
 	</div>
 
 	<div class="toolbar-section">
+		<label class="checkbox-label">
+			<input
+				type="checkbox"
+				checked={$settings.viewportCulling}
+				on:change={(e) => settings.setViewportCulling(e.currentTarget.checked)}
+				class="checkbox"
+			/>
+			<span class="label-text">Viewport Culling</span>
+		</label>
+	</div>
+
+	<div class="toolbar-section">
 		<button class="clear-button" on:click={handleClear}> Clear Canvas </button>
 	</div>
 
@@ -548,5 +560,19 @@
 		font-family: monospace;
 		pointer-events: none;
 		user-select: none;
+	}
+
+	.checkbox-label {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		cursor: pointer;
+	}
+
+	.checkbox {
+		width: 18px;
+		height: 18px;
+		cursor: pointer;
+		accent-color: #007bff;
 	}
 </style>
