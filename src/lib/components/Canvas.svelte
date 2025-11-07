@@ -187,7 +187,7 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	function handlePointerMove(event: PointerEvent) {
 		const screenPoint = getPointerPosition(event);
 
-		if (isDrawing && currentStroke) {
+		if (isDrawing && currentStroke && !touchState.isMultiTouch) {
 			// Convert screen position to world coordinates
 			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
 
@@ -301,6 +301,13 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	function handleTouchStart(event: TouchEvent) {
 		// Set multi-touch flag when 2+ fingers are detected
 		touchState.isMultiTouch = event.touches.length >= 2;
+
+		// If multi-touch detected, cancel any active drawing
+		if (touchState.isMultiTouch && isDrawing) {
+			isDrawing = false;
+			// Cancel the current stroke (don't save it)
+			drawing.cancelStroke();
+		}
 
 		// Only handle two-finger gestures for zoom/pan
 		if (event.touches.length !== 2) {

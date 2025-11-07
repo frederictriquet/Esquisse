@@ -104,6 +104,16 @@ function createDrawingStore() {
 		},
 
 		/**
+		 * Cancel the current stroke without saving it
+		 */
+		cancelStroke: () => {
+			broadcastUpdate((state) => ({
+				...state,
+				currentStroke: null
+			}));
+		},
+
+		/**
 		 * Add a completed stroke directly (for undo/redo, imports, etc.)
 		 */
 		addStroke: (stroke: Stroke) => {
