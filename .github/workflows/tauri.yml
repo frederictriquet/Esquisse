@@ -78,7 +78,6 @@ jobs:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: npm run tauri:build -- --target ${{ matrix.platform.target }}
-        shell: ${{ matrix.platform.os == 'windows-latest' && 'pwsh' || 'bash' }}
 
       - name: Upload artifacts (Linux)
         if: matrix.platform.os == 'ubuntu-latest'
