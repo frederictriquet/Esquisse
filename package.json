@@ -14,7 +14,9 @@
     "test:coverage": "vitest run --coverage",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "clean": "rm -rf .svelte-kit build node_modules/.vite",
+    "clean-all": "rm -rf .svelte-kit build node_modules/.vite node_modules src-tauri/target"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",

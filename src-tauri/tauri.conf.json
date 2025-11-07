@@ -9,9 +9,10 @@
     "frontendDist": "../build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Esquisse",
+        "title": "Esquisse - Dev (localhost:5173)",
         "width": 1200,
         "height": 800,
         "resizable": true,
