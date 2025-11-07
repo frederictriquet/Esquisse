@@ -20,9 +20,11 @@
 	let touchState: {
 		initialDistance: number | null;
 		lastCenter: Point | null;
+		isMultiTouch: boolean;
 	} = {
 		initialDistance: null,
-		lastCenter: null
+		lastCenter: null,
+		isMultiTouch: false
 	};
 
 	// Performance testing
@@ -144,6 +146,11 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	 */
 	function handlePointerDown(event: PointerEvent) {
 		if (!canvas) return;
+
+		// Prevent drawing during multi-touch gestures
+		if (touchState.isMultiTouch) {
+			return;
+		}
 
 		const screenPoint = getPointerPosition(event);
 
@@ -292,6 +299,9 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	 * Handle touch start - prepare for pinch/pan gestures
 	 */
 	function handleTouchStart(event: TouchEvent) {
+		// Set multi-touch flag when 2+ fingers are detected
+		touchState.isMultiTouch = event.touches.length >= 2;
+
 		// Only handle two-finger gestures for zoom/pan
 		if (event.touches.length !== 2) {
 			touchState.initialDistance = null;
@@ -349,6 +359,7 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 		if (event.touches.length < 2) {
 			touchState.initialDistance = null;
 			touchState.lastCenter = null;
+			touchState.isMultiTouch = false;
 		}
 	}
 
