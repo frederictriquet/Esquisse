@@ -335,12 +335,22 @@
 
 	.width-slider {
 		width: 100%;
-		height: 6px;
-		border-radius: 3px;
+		appearance: none;
 		outline: none;
+		cursor: pointer;
+		background: transparent;
+	}
+
+	/* WebKit (Safari/Chrome) track */
+	.width-slider::-webkit-slider-runnable-track {
+		width: 100%;
+		height: 6px;
+		background: #ddd;
+		border-radius: 3px;
 		cursor: pointer;
 	}
 
+	/* WebKit (Safari/Chrome) thumb */
 	.width-slider::-webkit-slider-thumb {
 		appearance: none;
 		width: 16px;
@@ -348,10 +358,20 @@
 		border-radius: 50%;
 		background: #007bff;
 		cursor: pointer;
+		margin-top: -5px; /* Center the thumb on the track */
 	}
 
 	.width-slider::-webkit-slider-thumb:hover {
 		background: #0056b3;
+	}
+
+	/* Firefox track */
+	.width-slider::-moz-range-track {
+		width: 100%;
+		height: 6px;
+		background: #ddd;
+		border-radius: 3px;
+		cursor: pointer;
 	}
 
 	.width-slider::-moz-range-thumb {
