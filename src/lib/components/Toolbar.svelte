@@ -174,18 +174,16 @@
 	</div>
 
 	<div class="toolbar-section">
-		<label for="color-picker">
+		<label for="color-picker" class="color-label">
 			<span class="label-text">Color</span>
-			<div class="color-input-wrapper">
-				<input
-					id="color-picker"
-					type="color"
-					value={colorValue}
-					on:input={handleColorChange}
-					class="color-picker"
-				/>
-				<span class="color-value">{colorValue}</span>
-			</div>
+			<span class="color-value">{colorValue}</span>
+			<input
+				id="color-picker"
+				type="color"
+				value={colorValue}
+				on:input={handleColorChange}
+				class="color-picker"
+			/>
 		</label>
 	</div>
 
@@ -276,7 +274,7 @@
 		padding: 16px;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		z-index: 1000;
-		min-width: 200px;
+		width: 220px;
 		font-family: system-ui, -apple-system, sans-serif;
 	}
 
@@ -308,29 +306,39 @@
 		margin-bottom: 8px;
 	}
 
-	.color-input-wrapper {
+	.color-label {
 		display: flex;
 		align-items: center;
 		gap: 8px;
 	}
 
-	.color-picker {
-		width: 50px;
-		height: 32px;
-		border: 1px solid #ddd;
-		border-radius: 4px;
-		cursor: pointer;
-		padding: 2px;
-	}
-
-	.color-picker:hover {
-		border-color: #999;
+	.color-label .label-text {
+		display: inline;
+		margin-bottom: 0;
+		flex-shrink: 0;
 	}
 
 	.color-value {
 		font-size: 12px;
 		color: #666;
 		font-family: monospace;
+		flex: 1;
+		min-width: 65px;
+		line-height: 1;
+	}
+
+	.color-picker {
+		width: 40px;
+		height: 28px;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		cursor: pointer;
+		padding: 2px;
+		flex-shrink: 0;
+	}
+
+	.color-picker:hover {
+		border-color: #999;
 	}
 
 	.width-slider {
@@ -409,13 +417,15 @@
 		justify-content: center;
 		min-width: 80px;
 		flex: 1;
-		min-height: 24px;
+		height: 24px;
+		overflow: hidden;
 	}
 
 	.preview-line {
 		width: 100%;
 		border-radius: 2px;
 		transition: all 0.2s ease;
+		max-height: 20px;
 	}
 
 	.clear-button {
