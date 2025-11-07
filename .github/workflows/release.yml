@@ -16,27 +16,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-    steps:
-      - name: Create Release
-        id: create_release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          prerelease: false
-          generate_release_notes: true
-          name: Release ${{ github.ref_name }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   build-tauri:
-    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -116,7 +96,8 @@ jobs:
         if: matrix.platform.os == 'ubuntu-latest'
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          draft: false
+          generate_release_notes: true
           files: |
             src-tauri/target/${{ matrix.platform.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.platform.target }}/release/bundle/appimage/*.AppImage
@@ -127,7 +108,8 @@ jobs:
         if: matrix.platform.os == 'macos-latest'
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          draft: false
+          generate_release_notes: true
           files: |
             src-tauri/target/${{ matrix.platform.target }}/release/bundle/dmg/*.dmg
         env:
@@ -137,13 +119,13 @@ jobs:
         if: matrix.platform.os == 'windows-latest'
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          draft: false
+          generate_release_notes: true
           files: src-tauri/target/${{ matrix.platform.target }}/release/bundle/nsis/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-docker:
-    needs: create-release
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,8 +170,9 @@ jobs:
       - name: Add Docker info to release notes
         uses: softprops/action-gh-release@v1
         with:
-          draft: true
+          draft: false
           append_body: true
+          generate_release_notes: true
           body: |
 
             ## Docker Image
@@ -201,29 +184,3 @@ jobs:
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  publish-release:
-    needs: [create-release, build-tauri, build-docker]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Publish Release
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const release = await github.rest.repos.getReleaseByTag({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              tag: context.ref.replace('refs/tags/', '')
-            });
-
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: release.data.id,
-              draft: false
-            });
-
-            console.log(`Published release: ${release.data.html_url}`);
