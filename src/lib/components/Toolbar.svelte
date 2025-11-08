@@ -16,6 +16,18 @@
 	let saveSuccess = false;
 	let loadSuccess = false;
 
+	// Track undo/redo availability
+	let canUndo = false;
+	let canRedo = false;
+
+	// Update undo/redo state reactively
+	$: {
+		// React to drawing state changes to update button states
+		$drawing;
+		canUndo = drawing.canUndo();
+		canRedo = drawing.canRedo();
+	}
+
 	// Tauri window API (dynamically imported)
 	let WebviewWindow: any = null;
 	let isTauri = false;
@@ -80,6 +92,14 @@
 
 	function handleResetView() {
 		transform.reset();
+	}
+
+	function handleUndo() {
+		drawing.undo();
+	}
+
+	function handleRedo() {
+		drawing.redo();
 	}
 
 	async function openPresentation() {
@@ -167,10 +187,11 @@
 </script>
 
 <div class="toolbar">
-	<div class="zoom-indicator">{Math.round($transform.scale * 100)}%</div>
-
 	<div class="toolbar-section">
-		<h3>Drawing Tools</h3>
+		<div class="zoom-display">
+			<span class="label-text">Zoom</span>
+			<span class="zoom-value">{Math.round($transform.scale * 100)}%</span>
+		</div>
 	</div>
 
 	<div class="toolbar-section">
@@ -224,27 +245,28 @@
 	</div>
 
 	<div class="toolbar-section">
-		<button class="clear-button" on:click={handleClear}> Clear Canvas </button>
-	</div>
-
-	<div class="toolbar-section">
-		<button class="reset-button" on:click={handleResetView}> Reset View </button>
-	</div>
-
-	<div class="toolbar-section">
-		<button class="present-button" on:click={openPresentation}> Open Presentation </button>
-	</div>
-
-	<div class="toolbar-section">
-		<button class="save-button" on:click={handleSave}> Save Drawing </button>
-		<button class="load-button" on:click={handleLoad}> Load Drawing </button>
-	</div>
-
-	{#if onHelp}
-		<div class="toolbar-section">
-			<button class="help-button" on:click={onHelp}> Help (H) </button>
+		<div class="button-grid-4">
+			<button
+				class="icon-button"
+				on:click={handleUndo}
+				disabled={!canUndo}
+				title="Undo (Ctrl+Z)"
+			>
+				↺
+			</button>
+			<button class="icon-button" on:click={handleRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+				↻
+			</button>
+			<button class="icon-button" on:click={handleClear} title="Clear Canvas"> 🗑️ </button>
+			<button class="icon-button" on:click={handleResetView} title="Reset View (R)"> 🎯 </button>
+			<button class="icon-button" on:click={handleSave} title="Save Drawing (Ctrl+S)"> 💾 </button>
+			<button class="icon-button" on:click={handleLoad} title="Load Drawing (Ctrl+O)"> 📂 </button>
+			<button class="icon-button" on:click={openPresentation} title="Open Presentation"> 🖥️ </button>
+			{#if onHelp}
+				<button class="icon-button" on:click={onHelp} title="Help (H)"> ❓ </button>
+			{/if}
 		</div>
-	{/if}
+	</div>
 
 	{#if saveSuccess}
 		<div class="message success">File saved successfully!</div>
@@ -271,26 +293,19 @@
 		background: white;
 		border: 1px solid #ddd;
 		border-radius: 8px;
-		padding: 16px;
+		padding: 12px;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 		z-index: 1000;
-		width: 220px;
+		width: 180px;
 		font-family: system-ui, -apple-system, sans-serif;
 	}
 
 	.toolbar-section {
-		margin-bottom: 16px;
+		margin-bottom: 12px;
 	}
 
 	.toolbar-section:last-child {
 		margin-bottom: 0;
-	}
-
-	h3 {
-		margin: 0 0 12px 0;
-		font-size: 14px;
-		font-weight: 600;
-		color: #333;
 	}
 
 	label {
@@ -300,10 +315,10 @@
 
 	.label-text {
 		display: block;
-		font-size: 13px;
+		font-size: 12px;
 		font-weight: 500;
 		color: #555;
-		margin-bottom: 8px;
+		margin-bottom: 6px;
 	}
 
 	.color-label {
@@ -328,8 +343,8 @@
 	}
 
 	.color-picker {
-		width: 40px;
-		height: 28px;
+		width: 36px;
+		height: 24px;
 		border: 1px solid #ddd;
 		border-radius: 4px;
 		cursor: pointer;
@@ -399,25 +414,25 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		gap: 12px;
-		margin-bottom: 8px;
+		gap: 6px;
+		margin-bottom: 6px;
 	}
 
 	.width-label {
-		width: 85px;
+		width: 80px;
 		flex-shrink: 0;
 	}
 
 	.width-preview {
-		padding: 6px 12px;
+		padding: 4px 6px;
 		background: #f8f8f8;
 		border-radius: 4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-width: 80px;
+		min-width: 50px;
 		flex: 1;
-		height: 24px;
+		height: 20px;
 		overflow: hidden;
 	}
 
@@ -428,111 +443,6 @@
 		max-height: 20px;
 	}
 
-	.clear-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #dc3545;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.clear-button:hover {
-		background: #c82333;
-	}
-
-	.clear-button:active {
-		transform: translateY(1px);
-	}
-
-	.reset-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #007bff;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.reset-button:hover {
-		background: #0056b3;
-	}
-
-	.reset-button:active {
-		transform: translateY(1px);
-	}
-
-	.present-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #28a745;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.present-button:hover {
-		background: #218838;
-	}
-
-	.present-button:active {
-		transform: translateY(1px);
-	}
-
-	.save-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #2196f3;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-		margin-bottom: 8px;
-	}
-
-	.save-button:hover {
-		background: #0b7dda;
-	}
-
-	.save-button:active {
-		transform: translateY(1px);
-	}
-
-	.load-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #ff9800;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
-	}
-
-	.load-button:hover {
-		background: #e68900;
-	}
-
-	.load-button:active {
-		transform: translateY(1px);
-	}
 
 	.message {
 		padding: 8px 12px;
@@ -555,54 +465,73 @@
 		border: 1px solid #f5c6cb;
 	}
 
-	.help-button {
-		width: 100%;
-		padding: 10px 16px;
-		background: #6c757d;
-		color: white;
-		border: none;
-		border-radius: 4px;
-		font-size: 13px;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background 0.2s ease;
+	.zoom-display {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 	}
 
-	.help-button:hover {
-		background: #5a6268;
+	.zoom-display .label-text {
+		margin-bottom: 0;
 	}
 
-	.help-button:active {
-		transform: translateY(1px);
-	}
-
-	.zoom-indicator {
-		position: absolute;
-		top: 8px;
-		right: 8px;
-		padding: 4px 8px;
-		background: rgba(0, 123, 255, 0.1);
-		border: 1px solid rgba(0, 123, 255, 0.3);
-		border-radius: 4px;
-		font-size: 11px;
-		font-weight: 600;
-		color: #007bff;
+	.zoom-value {
+		font-size: 12px;
+		color: #666;
 		font-family: monospace;
-		pointer-events: none;
-		user-select: none;
 	}
 
 	.checkbox-label {
 		display: flex;
 		align-items: center;
-		gap: 8px;
+		gap: 6px;
 		cursor: pointer;
 	}
 
 	.checkbox {
-		width: 18px;
-		height: 18px;
+		width: 16px;
+		height: 16px;
 		cursor: pointer;
 		accent-color: #007bff;
+	}
+
+	.button-grid-4 {
+		display: grid;
+		grid-template-columns: repeat(4, 1fr);
+		gap: 4px;
+	}
+
+	.icon-button {
+		padding: 4px;
+		background: #f8f8f8;
+		color: #333;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		font-size: 16px;
+		cursor: pointer;
+		transition: all 0.2s ease;
+		min-width: 32px;
+		min-height: 32px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.icon-button:hover:not(:disabled) {
+		background: #e8e8e8;
+		border-color: #999;
+	}
+
+	.icon-button:active:not(:disabled) {
+		transform: translateY(1px);
+		background: #ddd;
+	}
+
+	.icon-button:disabled {
+		background: #f8f8f8;
+		color: #ccc;
+		cursor: not-allowed;
+		opacity: 0.5;
+		border-color: #eee;
 	}
 </style>

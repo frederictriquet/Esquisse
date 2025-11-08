@@ -45,7 +45,10 @@
 							<strong>{modKey} + O</strong> - Load drawing
 						</li>
 						<li>
-							<strong>{modKey} + Z</strong> - Undo last stroke
+							<strong>{modKey} + Z</strong> - Undo last action
+						</li>
+						<li>
+							<strong>{modKey} + Y</strong> or <strong>{modKey} + Shift + Z</strong> - Redo last undone action
 						</li>
 						<li>
 							<strong>{modKey} + Shift + C</strong> - Clear canvas
@@ -62,6 +65,7 @@
 					<ul>
 						<li><strong>Color Picker</strong> - Choose drawing color</li>
 						<li><strong>Width Slider</strong> - Adjust line thickness (1-20px)</li>
+						<li><strong>Undo/Redo Buttons</strong> - Undo or redo drawing actions</li>
 						<li><strong>Clear Canvas</strong> - Remove all drawings</li>
 						<li><strong>Reset View</strong> - Return to default zoom/position</li>
 						<li><strong>Open Presentation</strong> - Open a separate window for presentation</li>

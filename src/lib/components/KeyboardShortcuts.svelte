@@ -34,10 +34,17 @@
 			return;
 		}
 
-		// Ctrl/Cmd + Z: Undo (remove last stroke)
+		// Ctrl/Cmd + Z: Undo
 		if (ctrlOrCmd && event.key === 'z' && !event.shiftKey) {
 			event.preventDefault();
-			drawing.removeLastStroke();
+			drawing.undo();
+			return;
+		}
+
+		// Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
+		if (ctrlOrCmd && ((event.shiftKey && event.key === 'z') || event.key === 'y')) {
+			event.preventDefault();
+			drawing.redo();
 			return;
 		}
 

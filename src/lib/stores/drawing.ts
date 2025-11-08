@@ -8,6 +8,7 @@ import {
 	selectFile,
 	type EsquisseFile
 } from '$lib/utils/fileIO';
+import { history } from './history';
 
 export interface DrawingState {
 	strokes: Stroke[];
@@ -95,6 +96,12 @@ function createDrawingStore() {
 			broadcastUpdate((state) => {
 				if (!state.currentStroke) return state;
 
+				// Record action in history
+				history.record({
+					type: 'stroke_add',
+					stroke: state.currentStroke
+				});
+
 				return {
 					...state,
 					strokes: [...state.strokes, state.currentStroke],
@@ -115,29 +122,84 @@ function createDrawingStore() {
 
 		/**
 		 * Add a completed stroke directly (for undo/redo, imports, etc.)
+		 * @param recordHistory - Whether to record this action in history (default: false for undo/redo)
 		 */
-		addStroke: (stroke: Stroke) => {
+		addStroke: (stroke: Stroke, recordHistory = false) => {
 			broadcastUpdate((state) => ({
 				...state,
 				strokes: [...state.strokes, stroke]
 			}));
+
+			if (recordHistory) {
+				history.record({
+					type: 'stroke_add',
+					stroke
+				});
+			}
 		},
 
 		/**
 		 * Clear all strokes and current stroke
 		 */
 		clear: () => {
+			let currentStrokes: Stroke[] = [];
+			const unsubscribe = subscribe((state) => {
+				currentStrokes = state.strokes;
+			});
+			unsubscribe();
+
+			// Record clear action in history (so it can be undone)
+			if (currentStrokes.length > 0) {
+				history.record({
+					type: 'strokes_clear',
+					strokes: currentStrokes
+				});
+			}
+
 			broadcastSet(initialState);
 		},
 
 		/**
-		 * Remove the last completed stroke (for undo functionality)
+		 * Remove a stroke at a specific index (for undo/redo)
+		 * @param index - Index of stroke to remove
+		 * @param recordHistory - Whether to record this action in history
+		 */
+		removeStroke: (index: number, recordHistory = false) => {
+			broadcastUpdate((state) => {
+				if (index < 0 || index >= state.strokes.length) return state;
+
+				const stroke = state.strokes[index];
+				if (recordHistory) {
+					history.record({
+						type: 'stroke_remove',
+						stroke,
+						index
+					});
+				}
+
+				const newStrokes = [...state.strokes];
+				newStrokes.splice(index, 1);
+
+				return {
+					...state,
+					strokes: newStrokes
+				};
+			});
+		},
+
+		/**
+		 * Remove the last completed stroke (legacy method - now uses history)
 		 */
 		removeLastStroke: () => {
-			broadcastUpdate((state) => ({
-				...state,
-				strokes: state.strokes.slice(0, -1)
-			}));
+			let lastIndex = -1;
+			const unsubscribe = subscribe((state) => {
+				lastIndex = state.strokes.length - 1;
+			});
+			unsubscribe();
+
+			if (lastIndex >= 0) {
+				drawing.removeStroke(lastIndex, true);
+			}
 		},
 
 		/**
@@ -205,7 +267,93 @@ function createDrawingStore() {
 			} catch (error) {
 				throw error;
 			}
-		}
+		},
+
+		/**
+		 * Undo the last action
+		 */
+		undo: () => {
+			const action = history.undo();
+			if (!action) return;
+
+			switch (action.type) {
+				case 'stroke_add':
+					// Remove the stroke that was added
+					broadcastUpdate((state) => ({
+						...state,
+						strokes: state.strokes.slice(0, -1)
+					}));
+					break;
+
+				case 'stroke_remove':
+					// Re-add the stroke that was removed
+					broadcastUpdate((state) => {
+						const newStrokes = [...state.strokes];
+						newStrokes.splice(action.index, 0, action.stroke);
+						return {
+							...state,
+							strokes: newStrokes
+						};
+					});
+					break;
+
+				case 'strokes_clear':
+					// Restore all strokes that were cleared
+					broadcastUpdate((state) => ({
+						...state,
+						strokes: action.strokes
+					}));
+					break;
+			}
+		},
+
+		/**
+		 * Redo the last undone action
+		 */
+		redo: () => {
+			const action = history.redo();
+			if (!action) return;
+
+			switch (action.type) {
+				case 'stroke_add':
+					// Re-add the stroke
+					broadcastUpdate((state) => ({
+						...state,
+						strokes: [...state.strokes, action.stroke]
+					}));
+					break;
+
+				case 'stroke_remove':
+					// Remove the stroke again
+					broadcastUpdate((state) => {
+						const newStrokes = [...state.strokes];
+						newStrokes.splice(action.index, 1);
+						return {
+							...state,
+							strokes: newStrokes
+						};
+					});
+					break;
+
+				case 'strokes_clear':
+					// Clear all strokes again
+					broadcastUpdate((state) => ({
+						...state,
+						strokes: []
+					}));
+					break;
+			}
+		},
+
+		/**
+		 * Check if undo is available
+		 */
+		canUndo: () => history.canUndo(),
+
+		/**
+		 * Check if redo is available
+		 */
+		canRedo: () => history.canRedo()
 	};
 }
 
