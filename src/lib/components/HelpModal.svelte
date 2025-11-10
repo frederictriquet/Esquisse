@@ -36,40 +36,36 @@
 				</section>
 
 				<section>
-					<h3>Keyboard Shortcuts</h3>
-					<ul>
-						<li>
-							<strong>{modKey} + S</strong> - Save drawing
-						</li>
-						<li>
-							<strong>{modKey} + O</strong> - Load drawing
-						</li>
-						<li>
-							<strong>{modKey} + Z</strong> - Undo last action
-						</li>
-						<li>
-							<strong>{modKey} + Y</strong> or <strong>{modKey} + Shift + Z</strong> - Redo last undone action
-						</li>
-						<li>
-							<strong>{modKey} + Shift + C</strong> - Clear canvas
-						</li>
-						<li><strong>R</strong> - Reset view to default zoom/position</li>
-						<li><strong>H</strong> or <strong>?</strong> - Show this help dialog</li>
-						<li><strong>T</strong> - Toggle performance test (1000 strokes)</li>
-						<li><strong>Esc</strong> - Close this dialog</li>
-					</ul>
-				</section>
-
-				<section>
-					<h3>Toolbar</h3>
+					<h3>Toolbar & Shortcuts</h3>
 					<ul>
 						<li><strong>Color Picker</strong> - Choose drawing color</li>
 						<li><strong>Width Slider</strong> - Adjust line thickness (1-20px)</li>
-						<li><strong>Undo/Redo Buttons</strong> - Undo or redo drawing actions</li>
-						<li><strong>Clear Canvas</strong> - Remove all drawings</li>
-						<li><strong>Reset View</strong> - Return to default zoom/position</li>
-						<li><strong>Open Presentation</strong> - Open a separate window for presentation</li>
-						<li><strong>Save/Load Drawing</strong> - Persist your work as JSON files</li>
+						<li>
+							<strong>↺ Undo</strong> (<strong>{modKey} + Z</strong>) - Undo last action
+						</li>
+						<li>
+							<strong>↻ Redo</strong> (<strong>{modKey} + Y</strong> or <strong>{modKey} + Shift + Z</strong>) - Redo last undone action
+						</li>
+						<li>
+							<strong>🗑️ Clear Canvas</strong> (<strong>{modKey} + Shift + C</strong>) - Remove all drawings
+						</li>
+						<li>
+							<strong>🎯 Reset View</strong> (<strong>R</strong>) - Return to default zoom/position
+						</li>
+						<li>
+							<strong>💾 Save Drawing</strong> (<strong>{modKey} + S</strong>) - Save your work as JSON file
+						</li>
+						<li>
+							<strong>📂 Load Drawing</strong> (<strong>{modKey} + O</strong>) - Load a saved JSON file
+						</li>
+						<li>
+							<strong>🖥️ Open Presentation</strong> - Open a separate window for presentation
+						</li>
+						<li>
+							<strong>❓ Help</strong> (<strong>H</strong> or <strong>?</strong>) - Show this help dialog
+						</li>
+						<li><strong>T</strong> - Toggle performance test (1000 strokes)</li>
+						<li><strong>Esc</strong> - Close this dialog</li>
 					</ul>
 				</section>
 
