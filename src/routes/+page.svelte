@@ -1,26 +1,14 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
 	import Canvas from '$lib/components/Canvas.svelte';
 	import Toolbar from '$lib/components/Toolbar.svelte';
 	import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
 	import HelpModal from '$lib/components/HelpModal.svelte';
 	import UpdateNotification from '$lib/components/UpdateNotification.svelte';
-	import { versionStore } from '$lib/stores/version';
 
 	let canvasComponent: Canvas;
 	let toolbarComponent: Toolbar;
 	let showHelp = false;
 	let performanceTestRunning = false;
-
-	onMount(() => {
-		// Start periodic version checking
-		versionStore.startPeriodicCheck();
-	});
-
-	onDestroy(() => {
-		// Clean up interval when component is destroyed
-		versionStore.stopPeriodicCheck();
-	});
 
 	function handleClear() {
 		canvasComponent.clear();
