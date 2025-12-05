@@ -13,6 +13,11 @@
 
 	const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
 	const modKey = isMac ? '⌘' : 'Ctrl';
+
+	const buildTimestamp = import.meta.env.VITE_BUILD_TIMESTAMP;
+	const formattedBuildDate = buildTimestamp
+		? new Date(buildTimestamp).toLocaleString()
+		: 'Development';
 </script>
 
 {#if open}
@@ -104,6 +109,10 @@
 			</div>
 
 			<div class="modal-footer">
+				<div class="build-info">
+					<span class="build-label">Build:</span>
+					<span class="build-timestamp">{formattedBuildDate}</span>
+				</div>
 				<button class="primary-button" on:click={handleClose}>Got it!</button>
 			</div>
 		</div>
@@ -218,7 +227,23 @@
 		padding: 16px 24px;
 		border-top: 1px solid #e0e0e0;
 		display: flex;
-		justify-content: flex-end;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.build-info {
+		display: flex;
+		gap: 8px;
+		font-size: 13px;
+		color: #666;
+	}
+
+	.build-label {
+		font-weight: 500;
+	}
+
+	.build-timestamp {
+		color: #888;
 	}
 
 	.primary-button {

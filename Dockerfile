@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Build argument for timestamp
+ARG BUILD_TIMESTAMP
+ENV VITE_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+
 # Copy package files
 COPY package*.json ./
 
