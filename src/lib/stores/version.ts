@@ -21,12 +21,21 @@ function createVersionStore() {
 	let pendingWorker: ServiceWorker | null = null;
 
 	function setUpdateAvailable(newWorker?: ServiceWorker) {
-		pendingWorker = newWorker || null;
-		update(state => ({
-			...state,
-			hasUpdate: true,
-			checking: false
-		}));
+		if (newWorker) {
+			pendingWorker = newWorker;
+			update(state => ({
+				...state,
+				hasUpdate: true,
+				checking: false
+			}));
+		} else {
+			// Dismiss notification
+			update(state => ({
+				...state,
+				hasUpdate: false,
+				checking: false
+			}));
+		}
 	}
 
 	function reloadPage() {

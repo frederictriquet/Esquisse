@@ -8,8 +8,9 @@
 	}
 
 	function handleDismiss() {
-		// User dismissed - we'll check again on next interval
-		versionStore.checkForUpdates();
+		// User dismissed - just hide the notification
+		// The service worker will check again on next interval
+		versionStore.setUpdateAvailable();
 	}
 </script>
 
