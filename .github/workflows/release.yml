@@ -2,6 +2,8 @@ name: Release
 
 on:
   push:
+    branches:
+      - master
     tags:
       - 'v*'
   workflow_dispatch:
@@ -16,7 +18,39 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  create-tag:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+    outputs:
+      tag: ${{ steps.create_tag.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create auto tag
+        id: create_tag
+        run: |
+          # Generate tag based on date and commit count
+          DATE=$(date +%Y.%m.%d)
+          COUNT=$(git rev-list --count HEAD)
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          TAG="v${DATE}.${COUNT}-${SHORT_SHA}"
+
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+          # Create and push the tag
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "${TAG}" -m "Automatic release ${TAG}"
+          git push origin "${TAG}"
+
   build-tauri:
+    needs: create-tag
+    if: always() && (github.event_name == 'push' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
     permissions:
       contents: write
     strategy:
@@ -83,6 +117,7 @@ jobs:
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          VITE_BUILD_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: npm run tauri:build -- --target ${{ matrix.platform.target }} --bundles nsis
 
       - name: Build Tauri application (Linux/macOS)
@@ -90,6 +125,7 @@ jobs:
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          VITE_BUILD_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
         run: npm run tauri:build -- --target ${{ matrix.platform.target }}
 
       - name: Upload Linux artifacts to release
@@ -126,6 +162,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-docker:
+    needs: create-tag
+    if: always() && (github.event_name == 'push' || startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -166,6 +204,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
+          build-args: |
+            BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp }}
 
       - name: Add Docker info to release notes
         uses: softprops/action-gh-release@v1
