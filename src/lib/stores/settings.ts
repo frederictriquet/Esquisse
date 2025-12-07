@@ -5,13 +5,17 @@ export interface DrawingSettings {
 	color: string;
 	width: number;
 	viewportCulling: boolean;
+	pressureCurve: number; // 0.5 = linear, < 0.5 = soft, > 0.5 = hard
+	tiltEnabled: boolean; // Enable tilt-based brush effects
 }
 
 const CHANNEL_NAME = 'esquisse-settings';
 const INITIAL_SETTINGS: DrawingSettings = {
 	color: '#000000',
 	width: 2,
-	viewportCulling: true
+	viewportCulling: true,
+	pressureCurve: 0.5, // Linear by default
+	tiltEnabled: true // Tilt effects enabled by default
 };
 
 function createSettingsStore() {
@@ -54,6 +58,8 @@ function createSettingsStore() {
 		setColor: (color: string) => broadcastUpdate(s => ({ ...s, color })),
 		setWidth: (width: number) => broadcastUpdate(s => ({ ...s, width })),
 		setViewportCulling: (viewportCulling: boolean) => broadcastUpdate(s => ({ ...s, viewportCulling })),
+		setPressureCurve: (pressureCurve: number) => broadcastUpdate(s => ({ ...s, pressureCurve })),
+		setTiltEnabled: (tiltEnabled: boolean) => broadcastUpdate(s => ({ ...s, tiltEnabled })),
 		reset: () => broadcastSet(INITIAL_SETTINGS)
 	};
 }

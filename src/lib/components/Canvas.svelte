@@ -15,6 +15,7 @@
 	let isDrawing = false;
 	let isPanning = false;
 	let lastPanPoint: Point | null = null;
+	let hoverPoint: (Point & { pressure: number }) | null = null; // For stylus hover preview
 
 	// Touch state for gestures
 	let touchState: {
@@ -154,6 +155,14 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 
 		const screenPoint = getPointerPosition(event);
 
+		// Check for stylus barrel button (typically button 5)
+		// Barrel button acts as eraser or alternative tool
+		if (event.button === 5 || (event.pointerType === 'pen' && event.button === 2)) {
+			// Future: implement eraser or alternative tool
+			console.log('Stylus barrel button pressed - eraser mode');
+			return;
+		}
+
 		// Left button - start drawing
 		if (event.button === 0) {
 			isDrawing = true;
@@ -161,13 +170,20 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			// Convert screen position to world coordinates
 			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
 
+			// Capture pressure from stylus/tablet (0.5 default for mouse)
+			const pressure = event.pressure || 0.5;
+
+			// Capture tilt data (stylus angle)
+			const tiltX = event.tiltX || 0;
+			const tiltY = event.tiltY || 0;
+
 			// Start new stroke in drawing store
 			// Width is stored in world coordinates so it zooms naturally
 			drawing.startStroke({
 				id: crypto.randomUUID(),
 				color: $settings.color,
 				width: $settings.width / $transform.scale,
-				points: [worldPoint],
+				points: [{ ...worldPoint, pressure, tiltX, tiltY }],
 				timestamp: Date.now()
 			});
 
@@ -191,8 +207,15 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			// Convert screen position to world coordinates
 			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
 
+			// Capture pressure from stylus/tablet (0.5 default for mouse)
+			const pressure = event.pressure || 0.5;
+
+			// Capture tilt data (stylus angle)
+			const tiltX = event.tiltX || 0;
+			const tiltY = event.tiltY || 0;
+
 			// Update current stroke in drawing store
-			drawing.updateCurrentStroke([...currentStroke.points, worldPoint]);
+			drawing.updateCurrentStroke([...currentStroke.points, { ...worldPoint, pressure, tiltX, tiltY }]);
 		} else if (isPanning && lastPanPoint) {
 			// Calculate pan delta
 			const deltaX = screenPoint.x - lastPanPoint.x;
@@ -224,6 +247,29 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			isPanning = false;
 			lastPanPoint = null;
 		}
+	}
+
+	/**
+	 * Handle pointer hover (stylus proximity without touch)
+	 */
+	function handlePointerHover(event: PointerEvent) {
+		// Only show hover for stylus devices
+		if (event.pointerType === 'pen' && event.buttons === 0) {
+			const screenPoint = getPointerPosition(event);
+			const worldPoint = screenToWorld(screenPoint.x, screenPoint.y, $transform);
+			const pressure = event.pressure || 0.3; // Light preview pressure
+
+			hoverPoint = { ...worldPoint, pressure };
+		} else {
+			hoverPoint = null;
+		}
+	}
+
+	/**
+	 * Handle pointer leave (clear hover)
+	 */
+	function handlePointerLeave() {
+		hoverPoint = null;
 	}
 
 	/**
@@ -447,6 +493,18 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			drawStroke(currentStroke);
 		}
 
+		// Draw stylus hover preview (cursor preview)
+		if (hoverPoint && !isDrawing) {
+			const radius = ($settings.width / $transform.scale) * hoverPoint.pressure / 2;
+			ctx.beginPath();
+			ctx.arc(hoverPoint.x, hoverPoint.y, radius, 0, Math.PI * 2);
+			ctx.strokeStyle = $settings.color;
+			ctx.lineWidth = 1 / $transform.scale; // 1px stroke at any zoom
+			ctx.stroke();
+			ctx.fillStyle = $settings.color + '40'; // 25% opacity
+			ctx.fill();
+		}
+
 		// Restore context state
 		ctx.restore();
 
@@ -465,15 +523,60 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	}
 
 	/**
+	 * Apply pressure curve adjustment
+	 * curve: 0.5 = linear, < 0.5 = soft (more responsive to light touch), > 0.5 = hard (requires more pressure)
+	 */
+	function applyPressureCurve(pressure: number, curve: number): number {
+		if (curve === 0.5) return pressure; // Linear, no adjustment
+
+		// Use power function for curve adjustment
+		const exponent = curve * 4; // Map 0-1 to 0-4 range
+		return Math.pow(pressure, exponent);
+	}
+
+	/**
+	 * Calculate tilt-based width modifier
+	 * More tilt = thicker stroke (like a brush at an angle)
+	 */
+	function getTiltModifier(tiltX: number = 0, tiltY: number = 0): number {
+		if (!$settings.tiltEnabled) return 1.0;
+
+		// Calculate tilt magnitude (0-90 degrees)
+		const tiltMagnitude = Math.sqrt(tiltX * tiltX + tiltY * tiltY);
+
+		// Map 0-90 degrees to 1.0-2.0 multiplier
+		// More tilt = broader brush stroke
+		return 1.0 + (tiltMagnitude / 90) * 1.0;
+	}
+
+	/**
 	 * Draw a single stroke on the canvas with smooth line interpolation
 	 * Stroke width is in world coordinates and zooms naturally with the canvas transform
+	 * Supports pressure-sensitive width variation
 	 */
 	function drawStroke(stroke: Stroke) {
 		if (!ctx || stroke.points.length === 0) return;
 
+		// Check if stroke has pressure data
+		const hasPressure = stroke.points.some(p => p.pressure !== undefined);
+
+		if (!hasPressure) {
+			// Legacy rendering without pressure
+			drawStrokeUniform(stroke);
+		} else {
+			// New rendering with pressure-sensitive width
+			drawStrokePressure(stroke);
+		}
+	}
+
+	/**
+	 * Draw stroke with uniform width (legacy, for backwards compatibility)
+	 */
+	function drawStrokeUniform(stroke: Stroke) {
+		if (!ctx || stroke.points.length === 0) return;
+
 		ctx.beginPath();
 		ctx.strokeStyle = stroke.color;
-		// Width is in world coordinates, canvas transform handles the scaling
 		ctx.lineWidth = stroke.width;
 		ctx.lineCap = 'round';
 		ctx.lineJoin = 'round';
@@ -494,7 +597,6 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 		// For multiple points, use quadratic curves for smoothing
 		else {
 			// Draw smooth line using quadratic curves
-			// Connect each point to the next with a curve, using the midpoint as control
 			for (let i = 1; i < stroke.points.length - 1; i++) {
 				const point = stroke.points[i];
 				const nextPoint = stroke.points[i + 1];
@@ -504,7 +606,6 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 				const midY = (point.y + nextPoint.y) / 2;
 
 				// Draw quadratic curve from previous point to midpoint
-				// Using current point as the control point
 				ctx.quadraticCurveTo(point.x, point.y, midX, midY);
 			}
 
@@ -516,13 +617,80 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 
 		ctx.stroke();
 	}
+
+	/**
+	 * Draw stroke with pressure-sensitive width variation
+	 * Uses multiple path segments with varying widths for smooth pressure transitions
+	 */
+	function drawStrokePressure(stroke: Stroke) {
+		if (!ctx || stroke.points.length === 0) return;
+
+		ctx.fillStyle = stroke.color;
+		ctx.strokeStyle = stroke.color;
+		ctx.lineCap = 'round';
+		ctx.lineJoin = 'round';
+
+		// For single point, draw a circle with pressure-based radius
+		if (stroke.points.length === 1) {
+			const point = stroke.points[0];
+			const pressure = point.pressure || 0.5;
+			const radius = (stroke.width * pressure) / 2;
+
+			ctx.beginPath();
+			ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+			ctx.fill();
+			return;
+		}
+
+		// Draw each segment with its own width based on pressure
+		for (let i = 0; i < stroke.points.length - 1; i++) {
+			const point = stroke.points[i];
+			const nextPoint = stroke.points[i + 1];
+
+			// Get pressure values (default to 0.5 if not set)
+			const pressure = point.pressure || 0.5;
+			const nextPressure = nextPoint.pressure || 0.5;
+
+			// Apply pressure curve
+			const adjustedPressure = applyPressureCurve(pressure, $settings.pressureCurve);
+			const adjustedNextPressure = applyPressureCurve(nextPressure, $settings.pressureCurve);
+
+			// Calculate average pressure for this segment
+			const avgPressure = (adjustedPressure + adjustedNextPressure) / 2;
+
+			// Apply tilt modifier if available
+			const tiltModifier = getTiltModifier(point.tiltX, point.tiltY);
+
+			// Calculate final line width with pressure and tilt
+			const lineWidth = stroke.width * avgPressure * tiltModifier;
+
+			// Draw segment with calculated width
+			ctx.beginPath();
+			ctx.lineWidth = lineWidth;
+			ctx.moveTo(point.x, point.y);
+
+			// Use quadratic curve for smoothness if we have more points
+			if (i < stroke.points.length - 2) {
+				const afterNext = stroke.points[i + 2];
+				const midX = (nextPoint.x + afterNext.x) / 2;
+				const midY = (nextPoint.y + afterNext.y) / 2;
+				ctx.quadraticCurveTo(nextPoint.x, nextPoint.y, midX, midY);
+			} else {
+				// Last segment - draw straight to end
+				ctx.lineTo(nextPoint.x, nextPoint.y);
+			}
+
+			ctx.stroke();
+		}
+	}
 </script>
 
 <canvas
 	bind:this={canvas}
 	on:pointerdown={handlePointerDown}
-	on:pointermove={handlePointerMove}
+	on:pointermove={(e) => { handlePointerMove(e); handlePointerHover(e); }}
 	on:pointerup={handlePointerUp}
+	on:pointerleave={handlePointerLeave}
 	on:wheel={handleWheel}
 	on:contextmenu={handleContextMenu}
 	on:touchstart={handleTouchStart}

@@ -3,6 +3,9 @@
 export interface Point {
 	x: number;
 	y: number;
+	pressure?: number; // 0.0 to 1.0, optional for backwards compatibility
+	tiltX?: number; // -90 to 90 degrees, stylus tilt from vertical (left/right)
+	tiltY?: number; // -90 to 90 degrees, stylus tilt from vertical (forward/back)
 }
 
 export interface Stroke {

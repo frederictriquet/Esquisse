@@ -35,6 +35,8 @@
 					<h3>Drawing</h3>
 					<ul>
 						<li><strong>Left Click + Drag</strong> - Draw with mouse</li>
+						<li><strong>Stylus/Tablet</strong> - Full pressure & tilt sensitivity</li>
+						<li><strong>Hover Preview</strong> - See brush size before drawing (stylus only)</li>
 						<li><strong>Right Click + Drag</strong> - Pan the canvas</li>
 						<li><strong>Mouse Wheel</strong> - Zoom in/out (centered on cursor)</li>
 					</ul>
