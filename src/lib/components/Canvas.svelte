@@ -557,14 +557,17 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 	function drawStroke(stroke: Stroke) {
 		if (!ctx || stroke.points.length === 0) return;
 
-		// Check if stroke has pressure data
-		const hasPressure = stroke.points.some(p => p.pressure !== undefined);
+		// Check if stroke has varying pressure (not just constant 0.5 from mouse)
+		const pressures = stroke.points.map(p => p.pressure || 0.5);
+		const minPressure = Math.min(...pressures);
+		const maxPressure = Math.max(...pressures);
+		const hasPressureVariation = (maxPressure - minPressure) > 0.05; // 5% threshold
 
-		if (!hasPressure) {
-			// Legacy rendering without pressure
+		if (!hasPressureVariation) {
+			// Use uniform rendering for constant pressure (mouse)
 			drawStrokeUniform(stroke);
 		} else {
-			// New rendering with pressure-sensitive width
+			// Use pressure-sensitive rendering for variable pressure (tablet)
 			drawStrokePressure(stroke);
 		}
 	}
