@@ -57,7 +57,6 @@ steps:
 
 **Features**:
 ```yaml
-- Multi-platform builds (linux/amd64, linux/arm64)
 - Automatic image tagging:
   - Branch name (e.g., `main`)
   - Semantic version (e.g., `v1.0.0`, `v1.0`, `v1`)
