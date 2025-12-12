@@ -3,6 +3,7 @@
 	import { drawing } from '$lib/stores/drawing';
 	import { transform } from '$lib/stores/transform';
 	import { createEventDispatcher } from 'svelte';
+	import { SHORTCUTS, matchesShortcut } from '$lib/config/shortcuts';
 
 	const dispatch = createEventDispatcher<{
 		save: void;
@@ -12,44 +13,45 @@
 		performanceTest: void;
 	}>();
 
+	const isMac = typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+
 	/**
 	 * Handle keyboard shortcuts globally
 	 */
 	function handleKeyDown(event: KeyboardEvent) {
-		// Check for modifier keys
-		const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-		const ctrlOrCmd = isMac ? event.metaKey : event.ctrlKey;
-
-		// Ctrl/Cmd + S: Save
-		if (ctrlOrCmd && event.key === 's') {
+		// Save
+		if (matchesShortcut(event, SHORTCUTS.save, isMac)) {
 			event.preventDefault();
 			dispatch('save');
 			return;
 		}
 
-		// Ctrl/Cmd + O: Load
-		if (ctrlOrCmd && event.key === 'o') {
+		// Load
+		if (matchesShortcut(event, SHORTCUTS.load, isMac)) {
 			event.preventDefault();
 			dispatch('load');
 			return;
 		}
 
-		// Ctrl/Cmd + Z: Undo
-		if (ctrlOrCmd && event.key === 'z' && !event.shiftKey) {
+		// Undo
+		if (matchesShortcut(event, SHORTCUTS.undo, isMac)) {
 			event.preventDefault();
 			drawing.undo();
 			return;
 		}
 
-		// Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y: Redo
-		if (ctrlOrCmd && ((event.shiftKey && event.key === 'z') || event.key === 'y')) {
-			event.preventDefault();
-			drawing.redo();
-			return;
+		// Redo (supports multiple shortcuts)
+		const redoShortcuts = Array.isArray(SHORTCUTS.redo) ? SHORTCUTS.redo : [SHORTCUTS.redo];
+		for (const shortcut of redoShortcuts) {
+			if (matchesShortcut(event, shortcut, isMac)) {
+				event.preventDefault();
+				drawing.redo();
+				return;
+			}
 		}
 
-		// Ctrl/Cmd + Shift + C: Clear canvas
-		if (ctrlOrCmd && event.shiftKey && event.key === 'C') {
+		// Clear canvas
+		if (matchesShortcut(event, SHORTCUTS.clear, isMac)) {
 			event.preventDefault();
 			if (confirm('Clear all strokes? This cannot be undone.')) {
 				dispatch('clear');
@@ -57,22 +59,50 @@
 			return;
 		}
 
-		// R: Reset view (no modifier)
-		if (!ctrlOrCmd && !event.shiftKey && !event.altKey && event.key === 'r') {
+		// Reset view
+		if (matchesShortcut(event, SHORTCUTS.resetView, isMac)) {
 			event.preventDefault();
 			transform.reset();
 			return;
 		}
 
-		// H or ?: Open help
-		if (!ctrlOrCmd && (event.key === 'h' || event.key === '?')) {
+		// Zoom in
+		if (matchesShortcut(event, SHORTCUTS.zoomIn, isMac) || matchesShortcut(event, SHORTCUTS.zoomInAlt, isMac)) {
 			event.preventDefault();
-			dispatch('help');
+			const centerX = window.innerWidth / 2;
+			const centerY = window.innerHeight / 2;
+			transform.zoom(200, centerX, centerY);
 			return;
 		}
 
-		// T: Toggle performance test
-		if (!ctrlOrCmd && !event.shiftKey && !event.altKey && event.key === 't') {
+		// Zoom out
+		if (matchesShortcut(event, SHORTCUTS.zoomOut, isMac)) {
+			event.preventDefault();
+			const centerX = window.innerWidth / 2;
+			const centerY = window.innerHeight / 2;
+			transform.zoom(-200, centerX, centerY);
+			return;
+		}
+
+		// Reset zoom
+		if (matchesShortcut(event, SHORTCUTS.resetZoom, isMac)) {
+			event.preventDefault();
+			transform.reset();
+			return;
+		}
+
+		// Help (supports multiple shortcuts)
+		const helpShortcuts = Array.isArray(SHORTCUTS.help) ? SHORTCUTS.help : [SHORTCUTS.help];
+		for (const shortcut of helpShortcuts) {
+			if (matchesShortcut(event, shortcut, isMac)) {
+				event.preventDefault();
+				dispatch('help');
+				return;
+			}
+		}
+
+		// Performance test
+		if (matchesShortcut(event, SHORTCUTS.performanceTest, isMac)) {
 			event.preventDefault();
 			dispatch('performanceTest');
 			return;

@@ -37,8 +37,20 @@
 						<li><strong>Left Click + Drag</strong> - Draw with mouse</li>
 						<li><strong>Stylus/Tablet</strong> - Full pressure & tilt sensitivity</li>
 						<li><strong>Hover Preview</strong> - See brush size before drawing (stylus only)</li>
-						<li><strong>Right Click + Drag</strong> - Pan the canvas</li>
+					</ul>
+				</section>
+
+				<section>
+					<h3>Navigation</h3>
+					<ul>
+						<li><strong>Space + Drag</strong> - Pan the canvas (hand tool)</li>
+						<li><strong>X + Drag Up/Down</strong> - Zoom in/out (drag tool)</li>
+						<li><strong>Right Click + Drag</strong> - Pan the canvas (alternative)</li>
 						<li><strong>Mouse Wheel</strong> - Zoom in/out (centered on cursor)</li>
+						<li><strong>{modKey} + Plus (+)</strong> - Zoom in</li>
+						<li><strong>{modKey} + Minus (-)</strong> - Zoom out</li>
+						<li><strong>{modKey} + 0</strong> - Reset zoom to 100%</li>
+						<li><strong>R</strong> - Reset view (zoom & position)</li>
 					</ul>
 				</section>
 
@@ -48,10 +60,10 @@
 						<li><strong>Color Picker</strong> - Choose drawing color</li>
 						<li><strong>Width Slider</strong> - Adjust line thickness (1-20px)</li>
 						<li>
-							<strong>↺ Undo</strong> (<strong>{modKey} + Z</strong>) - Undo last action
+							<strong>↺ Undo</strong> (<strong>{modKey} + Z</strong> or <strong>[</strong>) - Undo last action
 						</li>
 						<li>
-							<strong>↻ Redo</strong> (<strong>{modKey} + Y</strong> or <strong>{modKey} + Shift + Z</strong>) - Redo last undone action
+							<strong>↻ Redo</strong> (<strong>{modKey} + Y</strong>, <strong>{modKey} + Shift + Z</strong>, or <strong>]</strong>) - Redo last undone action
 						</li>
 						<li>
 							<strong>🗑️ Clear Canvas</strong> (<strong>{modKey} + Shift + C</strong>) - Remove all drawings

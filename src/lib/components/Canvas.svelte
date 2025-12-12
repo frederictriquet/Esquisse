@@ -6,6 +6,7 @@
 	import { screenToWorld } from '$lib/utils/coordinates';
 	import type { Point, Stroke } from '$lib/types';
 	import { generateTestStrokes, PerformanceTest } from '$lib/utils/performanceTest';
+	import { SHORTCUTS, isPanModeKey, isZoomModeKey } from '$lib/config/shortcuts';
 
 	// Canvas reference
 	let canvas: HTMLCanvasElement;
@@ -14,8 +15,13 @@
 	// Drawing state
 	let isDrawing = false;
 	let isPanning = false;
+	let isZooming = false; // Track if in zoom mode
 	let lastPanPoint: Point | null = null;
+	let lastZoomPoint: Point | null = null; // Track last Y position for zoom delta calculation
+	let zoomCenterPoint: Point | null = null; // Track zoom center (initial click point)
 	let hoverPoint: (Point & { pressure: number }) | null = null; // For stylus hover preview
+	let spaceKeyDown = false; // Track if space key is pressed for pan mode
+	let zoomKeyDown = false; // Track if zoom key is pressed for zoom mode
 
 	// Touch state for gestures
 	let touchState: {
@@ -122,8 +128,65 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 		// Handle window resize to keep canvas full screen
 		window.addEventListener('resize', resizeCanvas);
 
+		// Handle pan and zoom mode keys (configurable via shortcuts.ts)
+		const handleKeyDown = (event: KeyboardEvent) => {
+			// Pan mode
+			if (isPanModeKey(event) && !spaceKeyDown) {
+				event.preventDefault();
+				spaceKeyDown = true;
+				if (canvas) {
+					canvas.style.cursor = 'grab';
+				}
+			}
+			// Zoom mode
+			else if (isZoomModeKey(event) && !zoomKeyDown) {
+				event.preventDefault();
+				zoomKeyDown = true;
+				if (canvas) {
+					canvas.style.cursor = 'zoom-in';
+				}
+			}
+		};
+
+		const handleKeyUp = (event: KeyboardEvent) => {
+			// Pan mode release
+			if (isPanModeKey(event)) {
+				event.preventDefault();
+				spaceKeyDown = false;
+				// Stop panning if it was active
+				if (isPanning) {
+					isPanning = false;
+					lastPanPoint = null;
+				}
+				// Reset cursor to crosshair
+				if (canvas) {
+					canvas.style.cursor = 'crosshair';
+				}
+			}
+			// Zoom mode release
+			else if (isZoomModeKey(event)) {
+				event.preventDefault();
+				zoomKeyDown = false;
+				// Stop zooming if it was active
+				if (isZooming) {
+					isZooming = false;
+					lastZoomPoint = null;
+					zoomCenterPoint = null;
+				}
+				// Reset cursor to crosshair
+				if (canvas) {
+					canvas.style.cursor = 'crosshair';
+				}
+			}
+		};
+
+		window.addEventListener('keydown', handleKeyDown);
+		window.addEventListener('keyup', handleKeyUp);
+
 		return () => {
 			window.removeEventListener('resize', resizeCanvas);
+			window.removeEventListener('keydown', handleKeyDown);
+			window.removeEventListener('keyup', handleKeyUp);
 		};
 	});
 
@@ -160,6 +223,27 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 		if (event.button === 5 || (event.pointerType === 'pen' && event.button === 2)) {
 			// Future: implement eraser or alternative tool
 			console.log('Stylus barrel button pressed - eraser mode');
+			return;
+		}
+
+		// Space + Left button - start panning (like Photoshop)
+		if (event.button === 0 && spaceKeyDown) {
+			isPanning = true;
+			lastPanPoint = screenPoint;
+			if (canvas) {
+				canvas.style.cursor = 'grabbing';
+			}
+			return;
+		}
+
+		// Zoom key + Left button - start zooming (drag up/down to zoom)
+		if (event.button === 0 && zoomKeyDown) {
+			isZooming = true;
+			lastZoomPoint = screenPoint; // For tracking vertical movement
+			zoomCenterPoint = screenPoint; // Remember where we clicked - this is the zoom center
+			if (canvas) {
+				canvas.style.cursor = 'zoom-in';
+			}
 			return;
 		}
 
@@ -216,6 +300,17 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 
 			// Update current stroke in drawing store
 			drawing.updateCurrentStroke([...currentStroke.points, { ...worldPoint, pressure, tiltX, tiltY }]);
+		} else if (isZooming && lastZoomPoint && zoomCenterPoint) {
+			// Calculate vertical movement for zoom
+			const deltaY = lastZoomPoint.y - screenPoint.y; // Inverted: up = positive = zoom in
+
+			// Apply zoom with sensitivity adjustment (1 pixel = 5 units of zoom)
+			// Zoom is centered on the initial click point (zoomCenterPoint)
+			const zoomDelta = deltaY * 5;
+			transform.zoom(zoomDelta, zoomCenterPoint.x, zoomCenterPoint.y);
+
+			// Update last zoom point for continuous zooming (but keep zoomCenterPoint fixed)
+			lastZoomPoint = screenPoint;
 		} else if (isPanning && lastPanPoint) {
 			// Calculate pan delta
 			const deltaX = screenPoint.x - lastPanPoint.x;
@@ -243,6 +338,11 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			if (canvas) {
 				canvas.releasePointerCapture(event.pointerId);
 			}
+		} else if (event.button === 0 && isZooming) {
+			// Stop zooming on pointer up (but keep zoomKeyDown if key still pressed)
+			isZooming = false;
+			lastZoomPoint = null;
+			zoomCenterPoint = null;
 		} else if (event.button === 2 && isPanning) {
 			isPanning = false;
 			lastPanPoint = null;
@@ -623,21 +723,21 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 
 	/**
 	 * Draw stroke with pressure-sensitive width variation
-	 * Uses multiple path segments with varying widths for smooth pressure transitions
+	 * Uses circular stamps interpolated along the path for smooth, continuous strokes
 	 */
 	function drawStrokePressure(stroke: Stroke) {
 		if (!ctx || stroke.points.length === 0) return;
 
 		ctx.fillStyle = stroke.color;
-		ctx.strokeStyle = stroke.color;
-		ctx.lineCap = 'round';
-		ctx.lineJoin = 'round';
 
 		// For single point, draw a circle with pressure-based radius
 		if (stroke.points.length === 1) {
 			const point = stroke.points[0];
 			const pressure = point.pressure || 0.5;
-			const radius = (stroke.width * pressure) / 2;
+			const adjustedPressure = applyPressureCurve(pressure, $settings.pressureCurve);
+			const amplifiedPressure = adjustedPressure * $settings.pressureMultiplier;
+			const tiltModifier = getTiltModifier(point.tiltX, point.tiltY);
+			const radius = (stroke.width * amplifiedPressure * tiltModifier) / 2;
 
 			ctx.beginPath();
 			ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
@@ -645,45 +745,59 @@ ${results.avgFPS >= 50 ? '✅' : '⚠️'} Performance: ${results.avgFPS >= 50 ?
 			return;
 		}
 
-		// Draw each segment with its own width based on pressure
-		for (let i = 0; i < stroke.points.length - 1; i++) {
+		// Draw stroke using circular stamps for smooth appearance
+		// This technique creates smooth, brush-like strokes even with pressure variation
+		for (let i = 0; i < stroke.points.length; i++) {
 			const point = stroke.points[i];
-			const nextPoint = stroke.points[i + 1];
 
-			// Get pressure values (default to 0.5 if not set)
+			// Get pressure and apply adjustments
 			const pressure = point.pressure || 0.5;
-			const nextPressure = nextPoint.pressure || 0.5;
-
-			// Apply pressure curve
 			const adjustedPressure = applyPressureCurve(pressure, $settings.pressureCurve);
-			const adjustedNextPressure = applyPressureCurve(nextPressure, $settings.pressureCurve);
-
-			// Calculate average pressure for this segment
-			const avgPressure = (adjustedPressure + adjustedNextPressure) / 2;
-
-			// Apply tilt modifier if available
+			const amplifiedPressure = adjustedPressure * $settings.pressureMultiplier;
 			const tiltModifier = getTiltModifier(point.tiltX, point.tiltY);
 
-			// Calculate final line width with pressure and tilt
-			const lineWidth = stroke.width * avgPressure * tiltModifier;
+			// Calculate radius for this point
+			const radius = (stroke.width * amplifiedPressure * tiltModifier) / 2;
 
-			// Draw segment with calculated width
+			// Draw a filled circle at each point
 			ctx.beginPath();
-			ctx.lineWidth = lineWidth;
-			ctx.moveTo(point.x, point.y);
+			ctx.arc(point.x, point.y, radius, 0, Math.PI * 2);
+			ctx.fill();
+		}
 
-			// Use quadratic curve for smoothness if we have more points
-			if (i < stroke.points.length - 2) {
-				const afterNext = stroke.points[i + 2];
-				const midX = (nextPoint.x + afterNext.x) / 2;
-				const midY = (nextPoint.y + afterNext.y) / 2;
-				ctx.quadraticCurveTo(nextPoint.x, nextPoint.y, midX, midY);
-			} else {
-				// Last segment - draw straight to end
+		// Additionally, draw connecting lines for better coverage between points
+		// This fills gaps when points are far apart (fast drawing)
+		if (stroke.points.length > 1) {
+			for (let i = 0; i < stroke.points.length - 1; i++) {
+				const point = stroke.points[i];
+				const nextPoint = stroke.points[i + 1];
+
+				// Calculate pressures
+				const pressure = point.pressure || 0.5;
+				const nextPressure = nextPoint.pressure || 0.5;
+
+				const adjustedPressure = applyPressureCurve(pressure, $settings.pressureCurve);
+				const adjustedNextPressure = applyPressureCurve(nextPressure, $settings.pressureCurve);
+
+				const amplifiedPressure = adjustedPressure * $settings.pressureMultiplier;
+				const amplifiedNextPressure = adjustedNextPressure * $settings.pressureMultiplier;
+
+				const tiltModifier1 = getTiltModifier(point.tiltX, point.tiltY);
+				const tiltModifier2 = getTiltModifier(nextPoint.tiltX, nextPoint.tiltY);
+
+				// Use average width for the connecting line
+				const avgWidth = stroke.width * ((amplifiedPressure * tiltModifier1 + amplifiedNextPressure * tiltModifier2) / 2);
+
+				ctx.strokeStyle = stroke.color;
+				ctx.lineWidth = avgWidth;
+				ctx.lineCap = 'round';
+				ctx.lineJoin = 'round';
+
+				ctx.beginPath();
+				ctx.moveTo(point.x, point.y);
 				ctx.lineTo(nextPoint.x, nextPoint.y);
+				ctx.stroke();
 			}
-
-			ctx.stroke();
 		}
 	}
 </script>

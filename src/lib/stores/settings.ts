@@ -7,6 +7,7 @@ export interface DrawingSettings {
 	viewportCulling: boolean;
 	pressureCurve: number; // 0.5 = linear, < 0.5 = soft, > 0.5 = hard
 	tiltEnabled: boolean; // Enable tilt-based brush effects
+	pressureMultiplier: number; // 1.0-5.0, multiplies the effect of pressure on width
 }
 
 const CHANNEL_NAME = 'esquisse-settings';
@@ -15,7 +16,8 @@ const INITIAL_SETTINGS: DrawingSettings = {
 	width: 2,
 	viewportCulling: true,
 	pressureCurve: 0.5, // Linear by default
-	tiltEnabled: true // Tilt effects enabled by default
+	tiltEnabled: true, // Tilt effects enabled by default
+	pressureMultiplier: 4.0 // 2x multiplier for more dramatic pressure effects
 };
 
 function createSettingsStore() {
@@ -60,6 +62,7 @@ function createSettingsStore() {
 		setViewportCulling: (viewportCulling: boolean) => broadcastUpdate(s => ({ ...s, viewportCulling })),
 		setPressureCurve: (pressureCurve: number) => broadcastUpdate(s => ({ ...s, pressureCurve })),
 		setTiltEnabled: (tiltEnabled: boolean) => broadcastUpdate(s => ({ ...s, tiltEnabled })),
+		setPressureMultiplier: (pressureMultiplier: number) => broadcastUpdate(s => ({ ...s, pressureMultiplier })),
 		reset: () => broadcastSet(INITIAL_SETTINGS)
 	};
 }
